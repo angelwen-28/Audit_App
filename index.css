@@ -1865,6 +1865,27 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* --- 10. Responsive Media Queries --- */
+@media (max-width: 1280px) {
+  /* Adjust layout for mid‑size desktops/tablets */
+  .dashboard-grid {
+    grid-template-columns: 320px 1fr;
+    gap: 18px;
+  }
+  .sidebar-panel {
+    padding: 20px;
+  }
+  .app-header {
+    padding: 14px 22px;
+    gap: 12px;
+  }
+  .financial-columns {
+    gap: 16px;
+  }
+  .expense-table th, .expense-table td {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+}
 @media (max-width: 1024px) {
   .dashboard-grid {
     grid-template-columns: 300px 1fr;
@@ -2045,6 +2066,48 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Print Stylesheet overrides for PDF generation */
+@media (max-width: 480px) {
+  /* Ultra-small device adjustments */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .auth-card {
+    padding: 24px 16px;
+  }
+  .event-card {
+    padding: 12px;
+  }
+  .financial-columns {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+  .finance-column {
+    padding: 12px;
+  }
+  .btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  }
+  .sidebar-panel {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .expense-list-table-container {
+    font-size: 0.75rem;
+  }
+  .expense-table th, .expense-table td {
+    padding: 8px 10px;
+  }
+  .overall-balance-card h2 {
+    font-size: 2.5rem;
+  }
+}
+
 @media print {
   body {
     background: white !important;
