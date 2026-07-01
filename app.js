@@ -20,6 +20,79 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(reg => console.log('Service Worker registered with scope:', reg.scope))
       .catch(err => console.error('Service Worker registration failed:', err));
   }
+
+  // PWA Install Button Logic — targets ALL .pwa-install-btn elements across pages
+  let deferredPrompt = null;
+  const allInstallBtns = document.querySelectorAll('.pwa-install-btn');
+
+  // Detect if already running as installed PWA (standalone mode)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+
+  function showInstallButtons() {
+    if (!isStandalone) {
+      allInstallBtns.forEach(btn => btn.classList.remove('hide'));
+    }
+  }
+
+  function hideInstallButtons() {
+    allInstallBtns.forEach(btn => btn.classList.add('hide'));
+  }
+
+  // Listen for the browser's install prompt (Chrome, Edge, Samsung Internet)
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallButtons();
+    console.log('[PWA] beforeinstallprompt fired — install button shown');
+  });
+
+  // Attach click handler to every install button
+  allInstallBtns.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        // Browser supports native install prompt
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('[PWA] User response to install prompt:', outcome);
+        deferredPrompt = null;
+        if (outcome === 'accepted') {
+          hideInstallButtons();
+        }
+      } else {
+        // Fallback for browsers without beforeinstallprompt (e.g. iOS Safari)
+        // Show instructions
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+          alert('To install this app on your iPhone/iPad:\n\n1. Tap the Share button (square with arrow)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add"');
+        } else {
+          alert('To install this app:\n\n• On Chrome/Edge: Look for the install icon in the address bar\n• On Firefox: This browser may not support PWA installation\n• On Safari: Use "Add to Home Screen" from the share menu');
+        }
+      }
+    });
+  });
+
+  // Hide all buttons when app is installed
+  window.addEventListener('appinstalled', () => {
+    console.log('[PWA] App was installed');
+    deferredPrompt = null;
+    hideInstallButtons();
+  });
+
+  // Fallback: If beforeinstallprompt doesn't fire within 3 seconds
+  // and we're NOT in standalone mode, show the button anyway.
+  // This covers iOS Safari and other browsers that don't fire the event.
+  if (!isStandalone) {
+    setTimeout(() => {
+      if (!deferredPrompt) {
+        console.log('[PWA] beforeinstallprompt not fired — showing install button as fallback');
+        showInstallButtons();
+      }
+    }, 3000);
+  } else {
+    // Already installed — keep buttons hidden
+    hideInstallButtons();
+  }
   
   // --- 1. Seed Data Definition ---
   // Events are sorted chronologically. Each event has a unified income pool.
