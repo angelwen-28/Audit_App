@@ -1476,6 +1476,8 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-overlay.active-modal {
@@ -1485,8 +1487,10 @@ input:focus, select:focus, textarea:focus {
 .modal-card {
   width: 100%;
   max-width: 580px;
+  max-height: 90vh;
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 28px 32px;
   position: relative;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
@@ -2065,6 +2069,14 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+/* Responsive modal adjustments */
+@media (max-width: 640px) {
+  .modal-card { max-width: 95vw; padding: 20px 24px; }
+  .modal-footer { flex-direction: column; gap: 8px; }
+  .modal-footer .btn { width: 100%; }
+  .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
+}
+
 /* Print Stylesheet overrides for PDF generation */
 @media (max-width: 480px) {
   /* Ultra-small device adjustments */
@@ -2096,6 +2108,21 @@ input:focus, select:focus, textarea:focus {
   .sidebar-panel {
     max-height: 70vh;
     overflow-y: auto;
+  }
+  /* Modal adjustments for ultra‑small screens */
+  .modal-card {
+    max-width: 95vw;
+    padding: 16px 12px;
+  }
+  .modal-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  .modal-footer .btn {
+    flex: 1 1 auto;
+    width: 100%;
+    text-align: center;
   }
   .expense-list-table-container {
     font-size: 0.75rem;
