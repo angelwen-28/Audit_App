@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Expense Auditor - Premium real-time auditing and expense management dashboard. Secure role-based verification, dynamic aggregations, and automated reports.">
+  <title>Audit</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- PDF Export Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- App Wrapper -->
+  <div id="app" class="app-container">
+    
+    <!-- 0. First-Time Setup View -->
+    <section id="setup-view" class="auth-view">
+      <div class="auth-background-effects">
+        <div class="glow-sphere glow-sphere-1"></div>
+        <div class="glow-sphere glow-sphere-2"></div>
+      </div>
+      
+      <div class="auth-card glass-panel animate-fade-in" style="max-width: 520px; padding: 36px 30px;">
+        <div class="auth-header" style="margin-bottom: 24px;">
+          <div class="logo-container">
+            <i class="fa-solid fa-shield-halved logo-icon"></i>
+          </div>
+          <h1>INITIAL SETUP</h1>
+          <p>Register Administrative & Auditing Accounts</p>
+        </div>
+        
+        <form id="setup-form" class="auth-form">
+          <div style="background: rgba(249, 115, 22, 0.05); border: 1px solid rgba(249, 115, 22, 0.2); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 20px; font-size: 0.85rem; color: var(--text-secondary);">
+            <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 6px;"></i> Welcome! Set up your Auditor and Secretary accounts. Once registered, setup locks permanently.
+          </div>
+
+          <h3 style="font-family: var(--font-display); font-size: 1rem; margin-bottom: 12px; color: var(--primary); display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-user-tie"></i> Official Auditor Account</h3>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="setup-auditor-name"><i class="fa-regular fa-user"></i> Full Name</label>
+            <input type="text" id="setup-auditor-name" placeholder="e.g. Alex Carter" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="setup-auditor-email"><i class="fa-regular fa-envelope"></i> Email Address</label>
+            <input type="email" id="setup-auditor-email" placeholder="Enter auditor email address" autocomplete="off" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label for="setup-auditor-password"><i class="fa-solid fa-lock"></i> Password</label>
+            <div style="position: relative; width: 100%;">
+              <input type="password" id="setup-auditor-password" placeholder="Enter password" autocomplete="new-password" required style="padding-right: 46px;">
+              <button type="button" class="password-toggle-btn" data-target="setup-auditor-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; font-size: 1.1rem; padding: 0; z-index: 5;">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="auth-divider" style="margin: 16px 0;"></div>
+          
+          <h3 style="font-family: var(--font-display); font-size: 1rem; margin-bottom: 12px; color: var(--success); display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-pen-nib"></i> Official Secretary Account</h3>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="setup-secretary-name"><i class="fa-regular fa-user"></i> Full Name</label>
+            <input type="text" id="setup-secretary-name" placeholder="e.g. Morgan Vance" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="setup-secretary-email"><i class="fa-regular fa-envelope"></i> Email Address</label>
+            <input type="email" id="setup-secretary-email" placeholder="Enter secretary email address" autocomplete="off" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 24px;">
+            <label for="setup-secretary-password"><i class="fa-solid fa-lock"></i> Password</label>
+            <div style="position: relative; width: 100%;">
+              <input type="password" id="setup-secretary-password" placeholder="Enter password" autocomplete="new-password" required style="padding-right: 46px;">
+              <button type="button" class="password-toggle-btn" data-target="setup-secretary-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; font-size: 1.1rem; padding: 0; z-index: 5;">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+          </div>
+          
+          <button type="submit" id="btn-setup-submit" class="btn btn-primary btn-block">
+            <span>Initialize Secure Ledger</span> <i class="fa-solid fa-shield-halved"></i>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 1. Authentication View (Login Gate) -->
+    <section id="auth-view" class="auth-view active-view">
+      <div class="auth-background-effects">
+        <div class="glow-sphere glow-sphere-1"></div>
+        <div class="glow-sphere glow-sphere-2"></div>
+      </div>
+      
+      <div class="auth-card glass-panel animate-fade-in">
+        <div class="auth-header">
+          <div class="logo-container">
+            <i class="fa-solid fa-shield-halved logo-icon"></i>
+          </div>
+          <h1>AUDIT</h1>
+          <p>Secure Enterprise Expense Auditing Portal</p>
+        </div>
+        
+        <form id="login-form" class="auth-form">
+          <div class="form-group">
+            <label for="username"><i class="fa-regular fa-envelope"></i> Email Address</label>
+            <input type="email" id="username" placeholder="Enter email address" autocomplete="off" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="password"><i class="fa-solid fa-lock"></i> Password</label>
+            <div style="position: relative; width: 100%;">
+              <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" required style="padding-right: 46px;">
+              <button type="button" class="password-toggle-btn" data-target="password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; font-size: 1.1rem; padding: 0; z-index: 5;">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+          </div>
+          
+          <button type="submit" id="btn-login" class="btn btn-primary btn-block">
+            <span>Sign In Securely</span> <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <button type="button" id="btn-student-bypass" class="btn btn-block btn-outline btn-user-theme" style="margin-top: 12px; border-color: rgba(16, 185, 129, 0.35); color: var(--success);">
+          <i class="fa-solid fa-graduation-cap"></i> <span>Continue as Student (Read-Only)</span>
+        </button>
+        
+        <div class="auth-footer">
+          <p><i class="fa-solid fa-triangle-exclamation"></i> Authorized auditing personnel only. Actions are logged.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Main Application View (Dashboard) -->
+    <main id="dashboard-view" class="dashboard-view">
+      
+      <!-- Top Navigation bar -->
+      <header class="app-header glass-panel">
+        <div class="header-left">
+          <div class="logo-text">
+            <i class="fa-solid fa-shield-halved brand-icon"></i>
+            <span><strong>Audit</strong></span>
+          </div>
+          <span class="view-pill">Console v1.4</span>
+        </div>
+        
+        <div class="header-right">
+          <div class="user-profile-badge">
+            <div class="user-avatar" id="user-avatar">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="user-info">
+              <span class="user-name" id="user-display-name">Alex Carter</span>
+              <span class="user-role-badge badge-auditor" id="user-display-role">Auditor</span>
+            </div>
+          </div>
+          
+          <button id="btn-logout" class="btn btn-icon btn-logout" title="Log Out">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
+      </header>
+      
+      <!-- Dashboard Grid Layout -->
+      <div class="dashboard-grid">
+        
+        <!-- Left: Event Catalog -->
+        <aside class="sidebar-panel glass-panel">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-list-check"></i> Audit Projects</h2>
+            <span class="counter-badge" id="event-count">0</span>
+          </div>
+          
+          <button id="btn-overall-dashboard" class="overall-nav-btn">
+            <i class="fa-solid fa-wallet"></i>
+            <div class="overall-nav-text">
+              <strong>Overall IITSO FUNDS</strong>
+              <span id="nav-overall-balance">₱0.00</span>
+            </div>
+          </button>
+
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="event-search" placeholder="Search projects...">
+          </div>
+
+          <button id="btn-add-project" class="btn btn-primary btn-block hide" style="margin: 8px 0 10px 0; font-size: 0.85rem; padding: 10px 16px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i class="fa-solid fa-plus"></i> New Audit Project
+          </button>
+
+          <div class="event-list-container" id="event-list">
+            <!-- Event cards injected here by JS -->
+          </div>
+        </aside>
+        
+        <!-- Right: Event Detail & Expense Grid -->
+        <section class="main-panel glass-panel">
+          
+          <!-- Overall IITSO Funds Dashboard View -->
+          <div id="overall-dashboard-view" class="overall-dashboard hide">
+            <div class="overall-balance-card glass-panel">
+              <span class="balance-label">IITSO FUNDS BALANCE</span>
+              <h2 id="overall-net-balance">₱0.00</h2>
+              <p class="balance-meta">Based on the latest chronological event carry-over</p>
+            </div>
+          </div>
+          
+          <!-- Empty State (when no event is selected) -->
+          <div id="detail-empty-state" class="empty-state">
+            <i class="fa-solid fa-folder-open empty-icon"></i>
+            <h3>No Audit Project Selected</h3>
+            <p>Select a project from the list on the left to review its expenses, receipts, and financial metrics.</p>
+          </div>
+          
+          <!-- Detailed Event View -->
+          <div id="detail-content" class="detail-content hide">
+            
+            <!-- Event Header & Actions -->
+            <div class="detail-header-card" id="project-header-card">
+              <div class="header-main-info">
+                <div class="project-title-group">
+                  <span class="badge-status-pill" id="detail-project-status">Active</span>
+                  <h1 id="detail-project-name">Event Name</h1>
+                  <p class="project-meta-desc"><i class="fa-regular fa-calendar-days"></i> Event Date: <span id="detail-project-date">Jun 12, 2026</span></p>
+                </div>
+                
+                <!-- Action Row -->
+                <div class="project-actions">
+                  <button id="btn-export-pdf" class="btn btn-secondary">
+                    <i class="fa-solid fa-file-pdf"></i> Export Report
+                  </button>
+                </div>
+              </div>
+            </div>
+
+
+            <!-- Double Column Financial Layout -->
+            <div class="financial-columns">
+              
+              <!-- Column A: Income Pool Block -->
+              <div class="finance-column income-pool-block">
+                <div class="column-header">
+                  <i class="fa-solid fa-arrow-trend-up"></i>
+                  <h3>Income Pool</h3>
+                </div>
+
+                <div class="finance-row">
+                  <span class="finance-label">Previous Balance (Carry-Over)</span>
+                  <span class="finance-value" id="val-previous-balance">₱0.00</span>
+                </div>
+
+                <div class="finance-row editable-row">
+                  <span class="finance-label">Students</span>
+                  <div class="inline-input-group">
+                    <input type="number" id="input-students" class="inline-input" min="0" value="0" readonly>
+                    <span class="input-unit">students</span>
+                  </div>
+                </div>
+
+                <div class="finance-row editable-row">
+                  <span class="finance-label">Fee per Student</span>
+                  <div class="inline-input-group">
+                    <span class="input-prefix">₱</span>
+                    <input type="number" id="input-fee" class="inline-input" min="0" step="0.01" value="0" readonly>
+                  </div>
+                </div>
+
+                <div class="finance-row computed-row">
+                  <span class="finance-label">Student Collection Subtotal</span>
+                  <span class="finance-value text-budget" id="val-student-subtotal">₱0.00</span>
+                </div>
+
+                <div class="finance-separator"></div>
+
+                <div class="finance-row editable-row">
+                  <span class="finance-label">Membership Fees</span>
+                  <div class="inline-input-group">
+                    <span class="input-prefix">₱</span>
+                    <input type="number" id="input-membership" class="inline-input" min="0" step="0.01" value="0" readonly>
+                  </div>
+                </div>
+
+                <div class="finance-row editable-row">
+                  <span class="finance-label">Sanctions</span>
+                  <div class="inline-input-group">
+                    <span class="input-prefix">₱</span>
+                    <input type="number" id="input-sanctions" class="inline-input" min="0" step="0.01" value="0" readonly>
+                  </div>
+                </div>
+
+                <div class="finance-separator"></div>
+
+                <div class="finance-row total-row">
+                  <span class="finance-label"><strong>Total Income Pool</strong></span>
+                  <span class="finance-value total-value" id="val-total-pool">₱0.00</span>
+                </div>
+              </div>
+
+              <!-- Column B: Deductions Block -->
+              <div class="finance-column deductions-block">
+                <div class="column-header">
+                  <i class="fa-solid fa-arrow-trend-down"></i>
+                  <h3>Deductions</h3>
+                </div>
+
+                <div class="finance-row">
+                  <span class="finance-label">Starting Pool</span>
+                  <span class="finance-value text-budget" id="val-starting-pool">₱0.00</span>
+                </div>
+
+                <div class="finance-separator"></div>
+
+                <div class="finance-row">
+                  <span class="finance-label">Total Expenses</span>
+                  <span class="finance-value text-danger" id="val-total-expenses">₱0.00</span>
+                </div>
+
+                <div class="finance-row">
+                  <span class="finance-label">Number of Expenses</span>
+                  <span class="finance-value" id="val-expense-count">0</span>
+                </div>
+
+                <div class="finance-separator"></div>
+
+                <div class="finance-row total-row">
+                  <span class="finance-label"><strong>Net Remaining Balance</strong></span>
+                  <span class="finance-value total-value" id="val-net-remaining">₱0.00</span>
+                </div>
+
+                <!-- Budget consumption bar -->
+                <div class="budget-progress-bar-container" style="margin-top: 8px;">
+                  <div class="budget-progress-bar" id="stat-budget-progress"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                  <span>Budget Usage</span>
+                  <span id="stat-budget-percentage">0%</span>
+                </div>
+              </div>
+
+              <!-- Event Document Photo Panel (beside deductions) -->
+              <div id="event-photo-panel" class="finance-column event-photo-column hide">
+                <div class="column-header">
+                  <i class="fa-solid fa-image"></i>
+                  <h3>Event Document</h3>
+                </div>
+                <div class="event-photo-wrapper">
+                  <img id="event-photo-img" src="" alt="Event Document">
+                  <div class="event-photo-overlay">
+                    <button id="btn-view-event-photo" class="btn btn-outline btn-small" title="View Full Size">
+                      <i class="fa-solid fa-expand"></i> View Full
+                    </button>
+                  </div>
+                </div>
+                <p class="event-photo-caption">
+                  <i class="fa-solid fa-circle-info"></i>
+                  <span id="event-photo-caption-text">Attendance sheet, program, poster, etc.</span>
+                </p>
+              </div>
+            </div>
+            
+            <!-- Expenses List Controls -->
+            <div class="list-controls-bar">
+              <h3>Expense Records (<span id="expense-count">0</span>)</h3>
+              
+              <div class="filter-group">
+                <select id="expense-sort">
+                  <option value="date-desc">Newest First</option>
+                  <option value="date-asc">Oldest First</option>
+                  <option value="amount-desc">Amount: High to Low</option>
+                  <option value="amount-asc">Amount: Low to High</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Expense Items Container -->
+            <div class="expense-list-table-container">
+              <table class="expense-table" id="expense-table-element">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th class="text-center">Unit</th>
+                    <th class="text-right">Qty</th>
+                    <th class="text-right">Unit Cost</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-center">Receipt</th>
+                    <th class="text-center actions-header">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="expense-rows">
+                  <!-- Expense rows injected by JS -->
+                </tbody>
+              </table>
+              <div id="expense-empty-state" class="expense-empty-state hide">
+                <i class="fa-solid fa-receipt"></i>
+                <p>No expenses found matching the active filters.</p>
+              </div>
+            </div>
+            
+          </div>
+        </section>
+      </div>
+      
+      <!-- Floating Action Button for Auditors -->
+      <button id="btn-add-expense-fab" class="fab-btn hide" title="Add Expense Record">
+        <i class="fa-solid fa-plus"></i>
+      </button>
+      
+    </main>
+
+    <!-- User Profile Settings Modal -->
+    <div id="profile-modal" class="modal-overlay">
+      <div class="modal-card glass-panel animate-scale-in">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-user-gear"></i> Compliance Profile Settings</h3>
+          <button id="btn-close-profile-modal" class="btn-close">&times;</button>
+        </div>
+        
+        <!-- Account Summary Info -->
+        <div class="profile-account-summary" style="display: flex; align-items: center; gap: 16px; background: rgba(15, 23, 42, 0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 20px;">
+          <!-- Avatar Uploader Container -->
+          <div id="profile-avatar-container" class="profile-avatar-uploader" style="position: relative; width: 56px; height: 56px; cursor: pointer;">
+            <div class="user-avatar" id="profile-avatar" style="width: 56px; height: 56px; font-size: 1.45rem; border: 2px solid var(--border-glass);">
+              <span>A</span>
+            </div>
+            <div class="avatar-edit-overlay" style="position: absolute; bottom: -2px; right: -2px; width: 20px; height: 20px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-card); color: #fff; font-size: 0.65rem; box-shadow: var(--shadow-glow);">
+              <i class="fa-solid fa-camera"></i>
+            </div>
+            <input type="file" id="profile-avatar-input" accept="image/*" class="hide">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <strong id="profile-name-label" style="font-size: 1.05rem;">Alex Carter</strong>
+              <span class="user-role-badge badge-auditor" id="profile-role-badge">Auditor</span>
+            </div>
+            <span id="profile-email-label" style="font-size: 0.85rem; color: var(--text-secondary);">auditor@iitso.org</span>
+          </div>
+        </div>
+
+        <!-- Administrator Form Section -->
+        <div id="admin-profile-settings" class="hide">
+          <form id="profile-update-form" class="modal-form">
+            <div style="background: rgba(249, 115, 22, 0.05); border: 1px solid rgba(249, 115, 22, 0.2); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary);">
+              <i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 6px;"></i> Fill in fields you want to update. Enter your current password to save.
+            </div>
+
+            <div class="form-group">
+              <label for="profile-new-name"><i class="fa-regular fa-user"></i> New Display Name</label>
+              <input type="text" id="profile-new-name" placeholder="Leave blank to keep current">
+            </div>
+
+            <div class="form-group">
+              <label for="profile-new-email"><i class="fa-regular fa-envelope"></i> New Email Address</label>
+              <input type="email" id="profile-new-email" placeholder="Leave blank to keep current">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label for="profile-new-password"><i class="fa-solid fa-lock"></i> New Password</label>
+              <div style="position: relative; width: 100%;">
+                <input type="password" id="profile-new-password" placeholder="Leave blank to keep current" style="padding-right: 46px;">
+                <button type="button" class="password-toggle-btn" data-target="profile-new-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; font-size: 1.1rem; padding: 0; z-index: 5;">
+                  <i class="fa-regular fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px; border-top: 1px dashed var(--border-glass); padding-top: 16px;">
+              <label for="profile-current-password" style="color: var(--danger);"><i class="fa-solid fa-key"></i> Current Password (Required)</label>
+              <div style="position: relative; width: 100%;">
+                <input type="password" id="profile-current-password" placeholder="••••••••" required style="padding-right: 46px;">
+                <button type="button" class="password-toggle-btn" data-target="profile-current-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; font-size: 1.1rem; padding: 0; z-index: 5;">
+                  <i class="fa-regular fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" id="btn-cancel-profile" class="btn btn-outline">Cancel</button>
+              <button type="submit" id="btn-submit-profile" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Save Profile Settings
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Student Profile Section -->
+        <div id="student-profile-info" class="hide">
+
+          <!-- Name Change Form -->
+          <form id="student-name-form" style="margin-bottom: 16px;">
+            <div class="form-group">
+              <label for="student-name-input"><i class="fa-regular fa-user"></i> Display Name</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="student-name-input" placeholder="Enter your name" style="flex: 1;" maxlength="50">
+                <button type="submit" class="btn btn-primary" style="padding: 10px 16px; white-space: nowrap;">
+                  <i class="fa-solid fa-floppy-disk"></i> Save
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Info Block -->
+          <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-sm); padding: 16px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--success); font-size: 0.95rem;">
+              <i class="fa-solid fa-graduation-cap"></i> Read-Only Student Account
+            </div>
+            <p>You have accessed the ledger via student authorization. Your security permissions are restricted to read-only audits:</p>
+            <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+              <li>Verify all chronological income carry-over balances.</li>
+              <li>Search, filter, and inspect registered receipt uploads.</li>
+              <li>Compile and download verified PDF compliance reports.</li>
+            </ul>
+            <p style="font-weight: 500; color: var(--text-primary); border-top: 1px solid var(--border-glass); padding-top: 10px; margin-top: 4px;">
+              <i class="fa-solid fa-lock"></i> Adding or editing expenses is strictly prohibited for security compliance.
+            </p>
+          </div>
+          <div class="modal-footer" style="margin-top: 16px;">
+            <button type="button" id="btn-close-student-profile" class="btn btn-primary btn-block">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Project Management Modal -->
+    <div id="project-modal" class="modal-overlay">
+      <div class="modal-card glass-panel animate-scale-in" style="max-width: 540px;">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-folder-plus"></i> <span id="project-modal-title">New Audit Project</span></h3>
+          <button id="btn-close-project-modal" class="btn-close">&times;</button>
+        </div>
+
+        <form id="project-form" class="modal-form">
+          <input type="hidden" id="project-id-hidden">
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="project-name-input"><i class="fa-solid fa-folder"></i> Project Name</label>
+              <input type="text" id="project-name-input" placeholder="e.g. IT Day, Buwan ng Wika" required>
+            </div>
+            <div class="form-group">
+              <label for="project-date-input"><i class="fa-regular fa-calendar"></i> Event Date</label>
+              <input type="date" id="project-date-input" required>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="project-status-input"><i class="fa-solid fa-circle-half-stroke"></i> Status</label>
+              <select id="project-status-input" style="background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 10px 14px; width: 100%; color: var(--text-primary); font-size: 0.9rem;">
+                <option value="Active">Active</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="project-initial-balance"><i class="fa-solid fa-peso-sign"></i> Initial Balance (₱)</label>
+              <input type="number" id="project-initial-balance" min="0" step="0.01" placeholder="0.00" value="0">
+            </div>
+          </div>
+
+          <div style="background: rgba(249,115,22,0.05); border: 1px solid rgba(249,115,22,0.2); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary);">
+            <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 6px;"></i>
+            Initial Balance applies to the <strong>first</strong> event only. For subsequent events, carry-over is computed automatically.
+          </div>
+
+          <div style="border-top: 1px dashed var(--border-glass); padding-top: 16px; margin-bottom: 4px;">
+            <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-coins" style="color: var(--primary);"></i> Income Breakdown</p>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="project-students"><i class="fa-solid fa-users"></i> No. of Students</label>
+                <input type="number" id="project-students" min="0" placeholder="0" value="0">
+              </div>
+              <div class="form-group">
+                <label for="project-fee"><i class="fa-solid fa-peso-sign"></i> Fee / Student (₱)</label>
+                <input type="number" id="project-fee" min="0" step="0.01" placeholder="0.00" value="0">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="project-membership"><i class="fa-solid fa-id-card"></i> Membership (₱)</label>
+                <input type="number" id="project-membership" min="0" step="0.01" placeholder="0.00" value="0">
+              </div>
+              <div class="form-group">
+                <label for="project-sanctions"><i class="fa-solid fa-gavel"></i> Sanctions (₱)</label>
+                <input type="number" id="project-sanctions" min="0" step="0.01" placeholder="0.00" value="0">
+              </div>
+            </div>
+          </div>
+
+          <!-- Event Document Photo Upload -->
+          <div style="border-top: 1px dashed var(--border-glass); padding-top: 16px; margin-top: 4px;">
+            <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-image" style="color: var(--primary);"></i> Event Document Photo
+              <span style="font-weight: 400; color: var(--text-muted); font-size: 0.78rem;">(attendance sheet, program, poster, etc.)</span>
+            </p>
+            <input type="file" id="project-photo-input" accept="image/*" class="hide">
+            <!-- Upload placeholder (shown when no photo) -->
+            <div id="project-photo-placeholder" style="border: 2px dashed var(--border-glass); border-radius: var(--radius-sm); padding: 24px 16px; text-align: center; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; transition: border-color 0.2s, background 0.2s;">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
+              Click to upload event photo
+            </div>
+            <!-- Preview (shown when photo selected) -->
+            <div id="project-photo-preview" class="hide" style="position: relative; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-glass);">
+              <img id="project-photo-preview-img" src="" alt="Event Photo Preview" style="width: 100%; max-height: 180px; object-fit: cover; display: block;">
+              <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px;">
+                <button type="button" id="project-photo-change" style="font-size: 0.75rem; padding: 5px 10px; background: rgba(255,255,255,0.92); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; color: var(--text-secondary);">
+                  <i class="fa-solid fa-camera"></i> Change
+                </button>
+                <button type="button" id="project-photo-clear" style="font-size: 0.75rem; padding: 5px 10px; background: rgba(239,68,68,0.88); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; color: #fff;">
+                  <i class="fa-solid fa-xmark"></i> Remove
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" id="btn-cancel-project" class="btn btn-outline">Cancel</button>
+            <button type="submit" id="btn-submit-project" class="btn btn-primary">
+              <i class="fa-solid fa-floppy-disk"></i> Save Project
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 3. Auditor-Only Upload Modal -->
+    <div id="upload-modal" class="modal-overlay">
+      <div class="modal-card glass-panel animate-scale-in">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-file-invoice-dollar"></i> Audit Asset Registration</h3>
+          <button id="btn-close-modal" class="btn-close">&times;</button>
+        </div>
+        
+        <form id="add-expense-form" class="modal-form">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="exp-date"><i class="fa-regular fa-calendar"></i> Expense Date</label>
+              <input type="date" id="exp-date" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="exp-unit"><i class="fa-solid fa-box-archive"></i> Unit</label>
+              <input type="text" id="exp-unit" placeholder="e.g. Pc, Pcs, Kilo, Lot, Pax" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="exp-description"><i class="fa-solid fa-pen-to-square"></i> Description</label>
+            <input type="text" id="exp-description" placeholder="e.g. Sound System Rental, Food Catering" required>
+          </div>
+          
+          <div class="form-row-3">
+            <div class="form-group">
+              <label for="exp-quantity"><i class="fa-solid fa-hashtag"></i> Quantity</label>
+              <input type="number" id="exp-quantity" step="any" min="0.01" value="1" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="exp-unit-cost"><i class="fa-solid fa-peso-sign"></i> Unit Cost</label>
+              <input type="number" id="exp-unit-cost" step="0.01" min="0" placeholder="0.00" required>
+            </div>
+            
+            <div class="form-group">
+              <label><i class="fa-solid fa-calculator"></i> Total Amount</label>
+              <div class="amount-computed-display" id="exp-amount-display">₱0.00</div>
+            </div>
+          </div>
+          
+          <!-- Media Asset Picker & Upload -->
+          <div class="form-group">
+            <label><i class="fa-regular fa-images"></i> Receipt Documentation</label>
+            <div class="media-picker-container">
+              
+              <!-- File Upload Input Hidden -->
+              <input type="file" id="receipt-file-input" accept="image/*" class="hide">
+              
+              <div id="media-dropzone" class="media-dropzone">
+                <i class="fa-solid fa-cloud-arrow-up cloud-icon"></i>
+                <p>Drag receipt here or <span>browse files</span></p>
+                <span class="file-limits">Supports JPG, PNG (Max 5MB)</span>
+              </div>
+              
+              <!-- Quick Actions (e.g. Simulate Camera) -->
+              <div class="media-quick-actions">
+                <button type="button" id="btn-simulate-camera" class="btn btn-outline btn-small">
+                  <i class="fa-solid fa-camera"></i> Simulate Camera Capture
+                </button>
+              </div>
+              
+              <!-- File Preview (Visible when selected) -->
+              <div id="media-preview-container" class="media-preview-container hide">
+                <div class="preview-thumbnail-wrapper">
+                  <img id="media-preview-image" src="" alt="Receipt preview">
+                </div>
+                <div class="preview-details">
+                  <span id="preview-filename" class="filename">receipt.jpg</span>
+                  <span id="preview-filesize" class="filesize">425 KB</span>
+                </div>
+                <button type="button" id="btn-remove-media" class="btn btn-icon text-danger" title="Remove Asset">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              </div>
+              
+              <!-- Upload Progress Meter -->
+              <div id="upload-progress-wrapper" class="upload-progress-wrapper hide">
+                <div class="progress-details">
+                  <span id="upload-status-text"><i class="fa-solid fa-spinner fa-spin"></i> Encrypting & Uploading asset...</span>
+                  <span id="upload-progress-percent">0%</span>
+                </div>
+                <div class="upload-progress-track">
+                  <div id="upload-progress-bar" class="upload-progress-fill"></div>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" id="btn-cancel-modal" class="btn btn-outline">Cancel</button>
+            <button type="submit" id="btn-submit-expense" class="btn btn-primary">
+              <i class="fa-solid fa-shield-check"></i> Register Asset
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 4. Interactive Lightbox Previewer Modal -->
+    <div id="lightbox-modal" class="lightbox-overlay">
+      <div class="lightbox-container">
+        
+        <!-- Controls Bar -->
+        <div class="lightbox-controls">
+          <span class="lightbox-title" id="lightbox-receipt-title">Receipt Preview</span>
+          <div class="control-buttons">
+            <button id="btn-zoom-in" class="btn btn-lightbox-control" title="Zoom In">
+              <i class="fa-solid fa-magnifying-glass-plus"></i>
+            </button>
+            <button id="btn-zoom-out" class="btn btn-lightbox-control" title="Zoom Out">
+              <i class="fa-solid fa-magnifying-glass-minus"></i>
+            </button>
+            <button id="btn-zoom-reset" class="btn btn-lightbox-control" title="Actual Size">
+              <i class="fa-solid fa-arrows-to-eye"></i>
+            </button>
+            <button id="btn-close-lightbox" class="btn btn-lightbox-control close-btn" title="Close Lightbox">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Image Viewer viewport -->
+        <div class="lightbox-viewport" id="lightbox-viewport">
+          <div class="lightbox-img-wrapper" id="lightbox-img-wrapper">
+            <img id="lightbox-img" src="" alt="Receipt High Resolution" draggable="false">
+          </div>
+        </div>
+        
+        <!-- Instruction Overlay (fades out) -->
+        <div class="lightbox-instruction">
+          <p><i class="fa-solid fa-hand-pointer animate-pulse"></i> Click and drag to pan when zoomed</p>
+        </div>
+        
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
