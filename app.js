@@ -2,9 +2,24 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+let supabase = null;
+if (supabaseUrl && supabaseAnonKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+  } catch (err) {
+    console.error('Supabase client creation failed:', err);
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
+  
+  // Register Service Worker for PWA installation
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered with scope:', reg.scope))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  }
   
   // --- 1. Seed Data Definition ---
   // Events are sorted chronologically. Each event has a unified income pool.
@@ -134,6 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- 3. Database Layer (Supabase Wrapper) ---
   async function initDatabase() {
+    if (!supabase) {
+      alert('Configuration Error: Supabase credentials are missing or invalid.\n\nPlease add your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to the .env file in the project directory, then restart the Vite server.');
+      // Show setup page as fallback
+      el.authView.classList.remove('active-view');
+      el.dashboardView.classList.remove('active-view');
+      el.setupView.classList.add('active-view');
+      return;
+    }
     try {
       // 1. Fetch Accounts
       const { data: accountsData, error: accountsError } = await supabase
@@ -1765,21 +1788,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const email = el.usernameInput.value.trim();
-    const password = el.passwordInput.value;
-    
-    if (!appAccounts) {
-      alert('Error: System is not initialized. Please reload.');
-      checkSetupStatus();
-      return;
-    }
-    
-    if (email === appAccounts.auditor.email && password === appAccounts.auditor.password) {
-      login(appAccounts.auditor.email, 'auditor', appAccounts.auditor.name);
-    } else if (email === appAccounts.secretary.email && password === appAccounts.secretary.password) {
-      login(appAccounts.secretary.email, 'secretary', appAccounts.secretary.name);
-    } else {
-      alert('Access Denied: Invalid email address or password.');
+    try {
+      const email = el.usernameInput.value.trim();
+      const password = el.passwordInput.value;
+      
+      if (!appAccounts) {
+        alert('Error: System is not initialized. Please reload.');
+        checkSetupStatus();
+        return;
+      }
+      
+      if (email === appAccounts.auditor.email && password === appAccounts.auditor.password) {
+        login(appAccounts.auditor.email, 'auditor', appAccounts.auditor.name);
+      } else if (email === appAccounts.secretary.email && password === appAccounts.secretary.password) {
+        login(appAccounts.secretary.email, 'secretary', appAccounts.secretary.name);
+      } else {
+        alert('Access Denied: Invalid email address or password.');
+      }
+    } catch (err) {
+      console.error('Error during login:', err);
+      alert('Application Login Error: ' + err.message);
     }
   });
 
