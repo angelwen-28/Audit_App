@@ -453,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
     navOverallBalance: document.getElementById('nav-overall-balance'),
     
     // Main Panel (Details)
+    btnBackToProjects: document.getElementById('btn-back-to-projects'),
     detailEmptyState: document.getElementById('detail-empty-state'),
     detailContent: document.getElementById('detail-content'),
     overallDashboardView: document.getElementById('overall-dashboard-view'),
@@ -765,6 +766,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     renderEventList();
     
+    const dbGrid = document.querySelector('.dashboard-grid');
+    if (dbGrid) {
+      dbGrid.classList.add('show-detail');
+    }
+    
     if (eventId === 'overall') {
       el.detailEmptyState.classList.add('hide');
       el.detailContent.classList.add('hide');
@@ -957,13 +963,13 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (hasWriteAccess) {
         tr.innerHTML = `
-          <td><input type="date" class="table-input table-input-date" data-field="date" data-exp-id="${exp.id}" value="${exp.date}"></td>
-          <td><input type="text" class="table-input" data-field="description" data-exp-id="${exp.id}" value="${escapeAttr(exp.description)}"></td>
-          <td class="text-center"><input type="text" class="table-input table-input-unit" data-field="unit" data-exp-id="${exp.id}" value="${escapeAttr(exp.unit || '')}"></td>
-          <td class="text-right"><input type="number" class="table-input table-input-num" data-field="quantity" data-exp-id="${exp.id}" value="${exp.quantity || 1}" min="0" step="any"></td>
-          <td class="text-right"><input type="number" class="table-input table-input-num" data-field="unitCost" data-exp-id="${exp.id}" value="${exp.unitCost || 0}" min="0" step="0.01"></td>
-          <td class="text-right font-display amount-cell" id="amount-${exp.id}" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
-          <td class="text-center">
+          <td data-label="Date"><input type="date" class="table-input table-input-date" data-field="date" data-exp-id="${exp.id}" value="${exp.date}"></td>
+          <td data-label="Description"><input type="text" class="table-input" data-field="description" data-exp-id="${exp.id}" value="${escapeAttr(exp.description)}"></td>
+          <td data-label="Unit" class="text-center"><input type="text" class="table-input table-input-unit" data-field="unit" data-exp-id="${exp.id}" value="${escapeAttr(exp.unit || '')}"></td>
+          <td data-label="Qty" class="text-right"><input type="number" class="table-input table-input-num" data-field="quantity" data-exp-id="${exp.id}" value="${exp.quantity || 1}" min="0" step="any"></td>
+          <td data-label="Unit Cost" class="text-right"><input type="number" class="table-input table-input-num" data-field="unitCost" data-exp-id="${exp.id}" value="${exp.unitCost || 0}" min="0" step="0.01"></td>
+          <td data-label="Amount" class="text-right font-display amount-cell" id="amount-${exp.id}" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
+          <td data-label="Receipt" class="text-center">
             <button class="receipt-thumbnail-btn" title="Inspect Receipt">
               <div class="thumbnail-wrapper">
                 <img src="${exp.receiptUrl}" alt="Receipt">
@@ -971,7 +977,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             </button>
           </td>
-          <td class="text-center actions-cell">
+          <td data-label="Actions" class="text-center actions-cell">
             <button class="btn btn-icon btn-row-action btn-delete-expense" title="Remove Record">
               <i class="fa-regular fa-trash-can"></i>
             </button>
@@ -991,15 +997,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
       } else {
         tr.innerHTML = `
-          <td style="font-weight: 500;">${exp.date}</td>
-          <td style="color: var(--text-primary); font-weight: 600;">${escapeHTML(exp.description)}</td>
-          <td class="text-center">
+          <td data-label="Date" style="font-weight: 500;">${exp.date}</td>
+          <td data-label="Description" style="color: var(--text-primary); font-weight: 600;">${escapeHTML(exp.description)}</td>
+          <td data-label="Unit" class="text-center">
             <span class="unit-badge">${escapeHTML(exp.unit || '')}</span>
           </td>
-          <td class="text-right">${exp.quantity || 1}</td>
-          <td class="text-right">₱${formatMoney(exp.unitCost || 0)}</td>
-          <td class="text-right font-display" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
-          <td class="text-center">
+          <td data-label="Qty" class="text-right">${exp.quantity || 1}</td>
+          <td data-label="Unit Cost" class="text-right">₱${formatMoney(exp.unitCost || 0)}</td>
+          <td data-label="Amount" class="text-right font-display" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
+          <td data-label="Receipt" class="text-center">
             <button class="receipt-thumbnail-btn" title="Inspect Receipt">
               <div class="thumbnail-wrapper">
                 <img src="${exp.receiptUrl}" alt="Receipt">
@@ -1007,7 +1013,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             </button>
           </td>
-          <td class="text-center actions-cell hide"></td>
+          <td data-label="Actions" class="text-center actions-cell hide"></td>
         `;
       }
       
@@ -1986,6 +1992,15 @@ document.addEventListener('DOMContentLoaded', () => {
   el.btnOverallDashboard.addEventListener('click', () => {
     selectEvent('overall');
   });
+
+  if (el.btnBackToProjects) {
+    el.btnBackToProjects.addEventListener('click', () => {
+      const dbGrid = document.querySelector('.dashboard-grid');
+      if (dbGrid) {
+        dbGrid.classList.remove('show-detail');
+      }
+    });
+  }
 
   el.eventSearch.addEventListener('input', (e) => {
     appState.filters.search = e.target.value;

@@ -1871,7 +1871,8 @@ input:focus, select:focus, textarea:focus {
     gap: 16px;
   }
   
-  .financial-columns {
+  .financial-columns,
+  .financial-columns.has-photo {
     grid-template-columns: 1fr;
     gap: 16px;
   }
@@ -1886,13 +1887,57 @@ input:focus, select:focus, textarea:focus {
     padding: 10px 0;
   }
   
+  /* Compact Row Header on Mobile */
+  .app-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 12px 16px !important;
+  }
+  
+  .view-pill {
+    display: none !important;
+  }
+  
+  .user-info {
+    display: none !important;
+  }
+  
+  .user-profile-badge {
+    padding: 6px !important;
+  }
+  
+  /* Master-Detail Flow on Mobile */
   .dashboard-grid {
     grid-template-columns: 1fr;
     gap: 16px;
+    position: relative;
+    overflow: hidden;
   }
   
   .sidebar-panel {
-    height: 380px;
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+  }
+  
+  .main-panel {
+    display: none;
+    width: 100%;
+  }
+  
+  /* Show detail panel and hide sidebar panel when show-detail class is applied */
+  .dashboard-grid.show-detail .sidebar-panel {
+    display: none;
+  }
+  
+  .dashboard-grid.show-detail .main-panel {
+    display: block;
+  }
+  
+  .btn-back-projects {
+    display: flex !important;
   }
   
   .header-main-info {
@@ -1902,22 +1947,29 @@ input:focus, select:focus, textarea:focus {
   
   .project-actions {
     width: 100%;
+    margin-top: 12px;
   }
   
   .project-actions .btn {
     width: 100%;
   }
   
-  .financial-columns {
+  .financial-columns,
+  .financial-columns.has-photo {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
-  .form-row-2 {
+  .form-row-2,
+  .form-row-3 {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
   
   .modal-card {
     padding: 20px 24px;
+    max-height: 92vh;
+    overflow-y: auto;
   }
   
   .auth-card {
@@ -1925,27 +1977,70 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-@media (max-width: 480px) {
-  .financial-columns {
-    grid-template-columns: 1fr;
+@media (max-width: 640px) {
+  /* Text adjustments to prevent wrapping/overflows of large numbers */
+  .overall-balance-card h2 {
+    font-size: 2rem !important;
   }
   
-  .app-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    padding: 14px;
+  /* Transform the desktop layout table into mobile-friendly stacked cards */
+  .expense-table thead {
+    display: none !important;
   }
   
-  .header-right {
-    justify-content: space-between;
+  .expense-table, 
+  .expense-table tbody, 
+  .expense-table tr, 
+  .expense-table td {
+    display: block !important;
+    width: 100% !important;
   }
   
-  .expense-table th:nth-child(3),
-  .expense-table td:nth-child(3),
-  .expense-table th:nth-child(1),
-  .expense-table td:nth-child(1) {
-    display: none; /* Hide date and category on very small viewports */
+  .expense-table tr {
+    background: rgba(255, 255, 255, 0.4) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 14px !important;
+    margin-bottom: 16px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02) !important;
+  }
+  
+  .expense-table td {
+    border-bottom: none !important;
+    padding: 8px 0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 0.85rem !important;
+    text-align: right !important;
+  }
+
+  .expense-table td::before {
+    content: attr(data-label) !important;
+    font-weight: 700 !important;
+    color: var(--text-secondary) !important;
+    text-transform: uppercase !important;
+    font-size: 0.72rem !important;
+    text-align: left !important;
+    margin-right: auto !important;
+  }
+  
+  /* Adjust inputs inside stacked td cards so they align nicely */
+  .expense-table td input {
+    max-width: 160px !important;
+    text-align: right !important;
+    padding: 6px 10px !important;
+  }
+  
+  .expense-table td.actions-cell {
+    justify-content: flex-end !important;
+  }
+  
+  .list-controls-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
   }
 }
 
