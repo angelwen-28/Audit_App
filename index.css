@@ -1208,9 +1208,11 @@ input:focus, select:focus, textarea:focus {
 .expense-list-table-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-glass);
   background: rgba(255, 255, 255, 0.45);
+  -webkit-overflow-scrolling: touch;
 }
 
 .expense-table {

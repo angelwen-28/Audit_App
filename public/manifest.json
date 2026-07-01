@@ -1,7 +1,7 @@
 {
-  "name": "Aegis Expense Auditor",
-  "short_name": "Aegis Auditor",
-  "description": "Secure enterprise expense auditing and ledger portal with real-time financial tracking.",
+  "name": "ITAudit",
+  "short_name": "ITAudit",
+  "description": "Secure IT Audit Portal - Real-time events, ledger, and expense auditing.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#090d16",
