@@ -107,7 +107,9 @@ document.addEventListener('DOMContentLoaded', () => {
         students: 150,
         fee: 50.00,
         membership: 0,
-        sanctions: 0
+        sanctions: 0,
+        semester: '1',
+        schoolYear: '2025-2026'
       },
       {
         id: 'evt-2',
@@ -118,7 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
         students: 0,
         fee: 0,
         membership: 12000.00,
-        sanctions: 1500.00
+        sanctions: 1500.00,
+        semester: '2',
+        schoolYear: '2025-2026'
       },
       {
         id: 'evt-3',
@@ -129,7 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
         students: 0,
         fee: 0,
         membership: 15000.00,
-        sanctions: 2500.00
+        sanctions: 2500.00,
+        semester: '1',
+        schoolYear: '2025-2026'
       }
     ],
     expenses: {
@@ -203,7 +209,9 @@ document.addEventListener('DOMContentLoaded', () => {
     filters: {
       category: 'all',
       sort: 'date-desc',
-      search: ''
+      search: '',
+      semester: 'all',
+      schoolYear: 'all'
     },
     lightbox: {
       zoomScale: 1.0,
@@ -280,7 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
           fee: parseFloat(evt.fee || 0),
           membership: parseFloat(evt.membership || 0),
           sanctions: parseFloat(evt.sanctions || 0),
-          photoUrl: evt.photo_url
+          photoUrl: evt.photo_url,
+          semester: evt.semester || null,
+          schoolYear: evt.school_year || null
         }));
 
         appState.expenses = {};
@@ -475,6 +485,10 @@ document.addEventListener('DOMContentLoaded', () => {
     eventList: document.getElementById('event-list'),
     btnOverallDashboard: document.getElementById('btn-overall-dashboard'),
     navOverallBalance: document.getElementById('nav-overall-balance'),
+    
+    // Filters
+    filterSemester: document.getElementById('filter-semester'),
+    filterSchoolYear: document.getElementById('filter-school-year'),
     
     // Main Panel (Details)
     btnBackToProjects: document.getElementById('btn-back-to-projects'),
@@ -696,9 +710,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- 8. Event List Rendering (Sidebar) ---
   function renderEventList() {
     const searchQuery = appState.filters.search.toLowerCase();
-    const filteredEvents = appState.events.filter(evt => 
-      evt.name.toLowerCase().includes(searchQuery)
-    );
+    const filteredEvents = appState.events.filter(evt => {
+      const matchesSearch = evt.name.toLowerCase().includes(searchQuery);
+      const matchesSemester = appState.filters.semester === 'all' || (evt.semester && evt.semester === appState.filters.semester);
+      const matchesYear = appState.filters.schoolYear === 'all' || (evt.schoolYear && evt.schoolYear === appState.filters.schoolYear);
+      return matchesSearch && matchesSemester && matchesYear;
+    });
     
     // Update live overall balance badge at the top of the sidebar
     const lastEvent = appState.events[appState.events.length - 1];
@@ -895,6 +912,34 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 100);
     el.statPercentage.textContent = `${Math.round(progressPercent)}%`;
+  }
+
+  // Populate School Year filter options based on loaded events
+  function populateSchoolYearFilter() {
+    const select = el.filterSchoolYear;
+    if (!select) return;
+    // Clear existing options
+    while (select.firstChild) {
+      select.removeChild(select.firstChild);
+    }
+    // Add default option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = 'all';
+    defaultOption.textContent = 'All Years';
+    select.appendChild(defaultOption);
+    // Gather unique school years
+    const years = new Set();
+    appState.events.forEach(evt => {
+      if (evt.schoolYear) years.add(evt.schoolYear);
+    });
+    // Sort years (optional lexical)
+    const sortedYears = Array.from(years).sort();
+    sortedYears.forEach(year => {
+      const opt = document.createElement('option');
+      opt.value = year;
+      opt.textContent = year;
+      select.appendChild(opt);
+    });
   }
 
   // --- 10. Inline Input Change Handlers (Auditor Trigger) ---
@@ -2133,6 +2178,18 @@ document.addEventListener('DOMContentLoaded', () => {
     renderEventList();
   });
 
+  // Semester filter listener
+  el.filterSemester.addEventListener('change', (e) => {
+    appState.filters.semester = e.target.value;
+    renderEventList();
+  });
+
+  // School year filter listener
+  el.filterSchoolYear.addEventListener('change', (e) => {
+    appState.filters.schoolYear = e.target.value;
+    renderEventList();
+  });
+
   el.sortSelect.addEventListener('change', renderExpenseList);
 
   // Auto-calculate total amount in modal from qty × unit cost
@@ -2297,5 +2354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appState.events.length > 0) {
       selectEvent('overall');
     }
+    // Populate the school year filter based on loaded events
+    populateSchoolYearFilter();
   });
 });
