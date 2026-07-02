@@ -1999,6 +1999,7 @@ document.addEventListener('DOMContentLoaded', () => {
     supabase.from('accounts').insert(dbAccounts).then(({ error }) => {
       if (error) throw error;
       alert('Security Ledger successfully initialized! You can now log in.');
+      location.reload();
       
       // Switch to Login View
       el.setupView.classList.remove('active-view');
