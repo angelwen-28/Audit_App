@@ -207,6 +207,16 @@
             <i class="fa-solid fa-magnifying-glass"></i>
             <input type="text" id="event-search" placeholder="Search projects...">
           </div>
+          <div class="filter-bar">
+            <select id="filter-semester">
+              <option value="all">All Semesters</option>
+              <option value="1">1st Semester</option>
+              <option value="2">2nd Semester</option>
+            </select>
+            <select id="filter-school-year">
+              <option value="all">All Years</option>
+            </select>
+          </div>
 
           <button id="btn-add-project" class="btn btn-primary btn-block hide" style="margin: 8px 0 10px 0; font-size: 0.85rem; padding: 10px 16px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; gap: 8px;">
             <i class="fa-solid fa-plus"></i> New Audit Project
@@ -571,6 +581,22 @@
               <input type="date" id="project-date-input" required>
             </div>
           </div>
+          
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="event-semester"><i class="fa-solid fa-calendar-days"></i> Semester</label>
+              <select id="event-semester" required>
+                <option value="1">1st Semester</option>
+                <option value="2">2nd Semester</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="event-school-year"><i class="fa-solid fa-calendar"></i> School Year</label>
+              <select id="event-school-year" required>
+                <!-- Options will be populated dynamically -->
+              </select>
+            </div>
+          </div>
 
           <div class="form-row-2">
             <div class="form-group">
@@ -700,16 +726,7 @@
             <div class="media-picker-container">
               
               <!-- File Upload Input Hidden -->
-              <input type="file" id="receipt-file-input" onchange="el.receiptFileInput.addEventListener('change', (e) => {
-    // If a lightbox is open, this is an edit action
-    if (lightboxOverlay.classList.contains('active-lightbox')) {
-      // Update the lightbox image and stored base64
-      const img = document.getElementById('lightbox-img');
-      const title = document.getElementById('lightbox-receipt-title');
-      img.src = appState.attachedReceiptBase64 = e.target.result;
-      title.textContent = 'Receipt (Edited)';
-    }
-});" accept="image/*" class="hide">
+              <input type="file" id="receipt-file-input" accept="image/*" class="hide">
               
               <div id="media-dropzone" class="media-dropzone">
                 <i class="fa-solid fa-cloud-arrow-up cloud-icon"></i>

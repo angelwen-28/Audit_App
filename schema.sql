@@ -41,3 +41,9 @@ CREATE TABLE IF NOT EXISTS expenses (
 ALTER TABLE accounts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE events DISABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
+
+-- Add semester (1 or 2) and school_year columns to events table
+ALTER TABLE events
+  ADD COLUMN semester INTEGER CHECK (semester IN (1,2)) DEFAULT 1,
+  ADD COLUMN school_year TEXT;
+
