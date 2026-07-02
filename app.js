@@ -578,6 +578,8 @@ document.addEventListener('DOMContentLoaded', () => {
     projectFee: document.getElementById('project-fee'),
     projectMembership: document.getElementById('project-membership'),
     projectSanctions: document.getElementById('project-sanctions'),
+    eventSemesterInput: document.getElementById('event-semester'),
+    eventSchoolYearInput: document.getElementById('event-school-year'),
     
     // Event Photo Elements
     eventPhotoPanel: document.getElementById('event-photo-panel'),
@@ -940,6 +942,34 @@ document.addEventListener('DOMContentLoaded', () => {
       if (evt.schoolYear) years.add(evt.schoolYear);
     });
     // Sort years (optional lexical)
+    const sortedYears = Array.from(years).sort();
+    sortedYears.forEach(year => {
+      const opt = document.createElement('option');
+      opt.value = year;
+      opt.textContent = year;
+      select.appendChild(opt);
+    });
+  }
+
+  // Populate school year options for the Project creation/editing modal
+  function populateProjectSchoolYearSelect() {
+    const select = el.eventSchoolYearInput;
+    if (!select) return;
+    // Clear existing options
+    while (select.firstChild) {
+      select.removeChild(select.firstChild);
+    }
+    
+    // Standard school year options
+    const standardYears = ['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029', '2029-2030'];
+    const years = new Set(standardYears);
+    
+    // Also include any years existing in loaded events
+    appState.events.forEach(evt => {
+      if (evt.schoolYear) years.add(evt.schoolYear);
+    });
+    
+    // Sort and append options
     const sortedYears = Array.from(years).sort();
     sortedYears.forEach(year => {
       const opt = document.createElement('option');
@@ -1316,6 +1346,9 @@ document.addEventListener('DOMContentLoaded', () => {
     el.projectPhotoPlaceholder.classList.remove('hide');
     el.projectPhotoPreview.classList.add('hide');
 
+    // Populate project school year dropdown
+    populateProjectSchoolYearSelect();
+
     if (mode === 'edit' && eventId) {
       const event = appState.events.find(e => e.id === eventId);
       if (!event) return;
@@ -1329,6 +1362,8 @@ document.addEventListener('DOMContentLoaded', () => {
       el.projectFee.value = event.fee || 0;
       el.projectMembership.value = event.membership || 0;
       el.projectSanctions.value = event.sanctions || 0;
+      if (el.eventSemesterInput) el.eventSemesterInput.value = event.semester || '1';
+      if (el.eventSchoolYearInput) el.eventSchoolYearInput.value = event.schoolYear || '2025-2026';
       
       // Show existing photo if present
       if (event.photoUrl) {
@@ -1345,6 +1380,8 @@ document.addEventListener('DOMContentLoaded', () => {
       el.projectFee.value = 0;
       el.projectMembership.value = 0;
       el.projectSanctions.value = 0;
+      if (el.eventSemesterInput) el.eventSemesterInput.value = '1';
+      if (el.eventSchoolYearInput) el.eventSchoolYearInput.value = '2025-2026';
     }
 
     el.projectModal.classList.add('active-modal');
@@ -1366,6 +1403,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const fee = parseFloat(el.projectFee.value) || 0;
     const membership = parseFloat(el.projectMembership.value) || 0;
     const sanctions = parseFloat(el.projectSanctions.value) || 0;
+    const semester = el.eventSemesterInput ? el.eventSemesterInput.value : '1';
+    const schoolYear = el.eventSchoolYearInput ? el.eventSchoolYearInput.value : '2025-2026';
 
     let targetEvent = null;
 
@@ -1381,6 +1420,8 @@ document.addEventListener('DOMContentLoaded', () => {
       event.fee = fee;
       event.membership = membership;
       event.sanctions = sanctions;
+      event.semester = semester;
+      event.schoolYear = schoolYear;
       
       // Save photo (base64 or null)
       if (appState.pendingProjectPhotoBase64) {
@@ -1403,6 +1444,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fee,
         membership,
         sanctions,
+        semester,
+        schoolYear,
         photoUrl: appState.pendingProjectPhotoBase64 || null
       };
       appState.events.push(newEvent);
@@ -1425,7 +1468,9 @@ document.addEventListener('DOMContentLoaded', () => {
         fee: targetEvent.fee,
         membership: targetEvent.membership,
         sanctions: targetEvent.sanctions,
-        photo_url: targetEvent.photoUrl
+        photo_url: targetEvent.photoUrl,
+        semester: targetEvent.semester,
+        school_year: targetEvent.schoolYear
       };
       await supabase.from('events').upsert(dbEvent);
     } catch (err) {
