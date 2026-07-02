@@ -1545,28 +1545,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (updated) {
-      setDBValue('accounts', appAccounts).then(() => {
-        sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
-        
-        // Update all UI displays
-        el.userDisplayName.textContent = appState.currentUser.name;
-        el.profileNameLabel.textContent = appState.currentUser.name;
-        el.profileEmailLabel.textContent = appState.currentUser.email;
-        
-        if (appState.currentUser.avatarUrl) {
-          el.userAvatar.innerHTML = `<img src="${appState.currentUser.avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-          el.profileAvatar.innerHTML = `<img src="${appState.currentUser.avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-        } else {
-          el.userAvatar.innerHTML = `<span style="font-family: var(--font-display);">${appState.currentUser.name.charAt(0)}</span>`;
-          el.profileAvatar.innerHTML = `<span style="font-family: var(--font-display);">${appState.currentUser.name.charAt(0)}</span>`;
-        }
-        
-        alert('Profile successfully updated!');
-        closeProfileModal();
-      }).catch(e => {
-        console.error('Error saving updated profile to database', e);
-        alert('Database error: Unable to save profile changes.');
-      });
+      console.log('Updating accounts in Supabase', appAccounts);
+      setDBValue('accounts', appAccounts)
+        .then(() => {
+          sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
+          // Update all UI displays
+          el.userDisplayName.textContent = appState.currentUser.name;
+          el.profileNameLabel.textContent = appState.currentUser.name;
+          el.profileEmailLabel.textContent = appState.currentUser.email;
+
+          if (appState.currentUser.avatarUrl) {
+            el.userAvatar.innerHTML = `<img src="${appState.currentUser.avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            el.profileAvatar.innerHTML = `<img src="${appState.currentUser.avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+          } else {
+            el.userAvatar.innerHTML = `<span style="font-family: var(--font-display);">${appState.currentUser.name.charAt(0)}</span>`;
+            el.profileAvatar.innerHTML = `<span style="font-family: var(--font-display);">${appState.currentUser.name.charAt(0)}</span>`;
+          }
+          alert('Profile successfully updated!');
+          closeProfileModal();
+        })
+        .catch(err => {
+          console.error('Error updating accounts with setDBValue', err);
+          alert('Failed to save profile changes. Please try again.');
+        });
     } else {
       alert('No updates specified. Please fill in at least one field to update.');
     }
@@ -2077,15 +2078,41 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     appState.currentUser.name = newName;
-    sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
+    if (updated) {
+      console.log('Updating accounts in Supabase', appAccounts);
+      setDBValue('accounts', appAccounts)
+        .then(() => {
+          sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
+          // Update all UI displays
+          el.userDisplayName.textContent = appState.currentUser.name;
+          el.profileNameLabel.textContent = appState.currentUser.name;
+          el.profileEmailLabel.textContent = appState.currentUser.email;
 
-    // Update all visible name displays
-    el.userDisplayName.textContent = newName;
-    el.profileNameLabel.textContent = newName;
-    el.userAvatar.innerHTML = `<span style="font-family: var(--font-display);">${newName.charAt(0).toUpperCase()}</span>`;
-    el.profileAvatar.innerHTML = `<span style="font-family: var(--font-display);">${newName.charAt(0).toUpperCase()}</span>`;
+          if (appState.currentUser.avatarUrl) {
+            el.userAvatar.innerHTML = `<img src="${appState.currentUser.avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            el.profileAvatar.innerHTML = `<img src="${appState.currentUser.avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+          } else {
+            el.userAvatar.innerHTML = `<span style="font-family: var(--font-display);">${appState.currentUser.name.charAt(0)}</span>`;
+            el.profileAvatar.innerHTML = `<span style="font-family: var(--font-display);">${appState.currentUser.name.charAt(0)}</span>`;
+          }
+          alert('Profile successfully updated!');
+          closeProfileModal();
+        })
+        .catch(err => {
+          console.error('Error updating accounts with setDBValue', err);
+          alert('Failed to save profile changes. Please try again.');
+        });
+    } else {
+      sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
 
-    closeProfileModal();
+      // Update all visible name displays
+      el.userDisplayName.textContent = newName;
+      el.profileNameLabel.textContent = newName;
+      el.userAvatar.innerHTML = `<span style="font-family: var(--font-display);">${newName.charAt(0).toUpperCase()}</span>`;
+      el.profileAvatar.innerHTML = `<span style="font-family: var(--font-display);">${newName.charAt(0).toUpperCase()}</span>`;
+
+      closeProfileModal();
+    }
   });
 
   el.btnOverallDashboard.addEventListener('click', () => {
