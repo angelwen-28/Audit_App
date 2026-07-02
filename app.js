@@ -211,7 +211,9 @@ document.addEventListener('DOMContentLoaded', () => {
       panY: 0,
       isDragging: false,
       startX: 0,
-      startY: 0
+      startY: 0,
+      currentExpenseId: null,
+      currentEventId: null
     },
     attachedReceiptBase64: null,
     profileAvatarPendingBase64: null,
@@ -396,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- 6. DOM Elements Queries ---
+  // --- 6. DOM Elements ---
   const el = {
     // Setup View
     setupView: document.getElementById('setup-view'),
@@ -521,6 +523,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnZoomOut: document.getElementById('btn-zoom-out'),
     btnZoomReset: document.getElementById('btn-zoom-reset'),
     btnCloseLightbox: document.getElementById('btn-close-lightbox'),
+    btnEditReceipt: document.getElementById('btn-edit-receipt'),
+    receiptEditInput: document.getElementById('receipt-edit-input'),
 
     // Project Management Modal
     btnAddProject: document.getElementById('btn-add-project'),
@@ -970,12 +974,17 @@ document.addEventListener('DOMContentLoaded', () => {
           <td data-label="Unit Cost" class="text-right"><input type="number" class="table-input table-input-num" data-field="unitCost" data-exp-id="${exp.id}" value="${exp.unitCost || 0}" min="0" step="0.01"></td>
           <td data-label="Amount" class="text-right font-display amount-cell" id="amount-${exp.id}" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
           <td data-label="Receipt" class="text-center">
-            <button class="receipt-thumbnail-btn" title="Inspect Receipt">
-              <div class="thumbnail-wrapper">
-                <img src="${exp.receiptUrl}" alt="Receipt">
-                <div class="thumbnail-hover-overlay"><i class="fa-solid fa-magnifying-glass"></i></div>
-              </div>
-            </button>
+            <div style="position: relative; display: inline-block;">
+              <button class="receipt-thumbnail-btn" title="Inspect Receipt">
+                <div class="thumbnail-wrapper">
+                  <img src="${exp.receiptUrl}" alt="Receipt">
+                  <div class="thumbnail-hover-overlay"><i class="fa-solid fa-magnifying-glass"></i></div>
+                </div>
+              </button>
+              <button class="btn-edit-row-receipt" data-exp-id="${exp.id}" title="Change Receipt">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+            </div>
           </td>
           <td data-label="Actions" class="text-center actions-cell">
             <button class="btn btn-icon btn-row-action btn-delete-expense" title="Remove Record">
@@ -993,6 +1002,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         tr.querySelector('.btn-delete-expense').addEventListener('click', () => {
           deleteExpenseRecord(exp.id);
+        });
+        
+        tr.querySelector('.btn-edit-row-receipt')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          appState.lightbox.currentExpenseId = exp.id;
+          appState.lightbox.currentEventId = eventId;
+          if (el.receiptEditInput) {
+            el.receiptEditInput.value = '';
+            el.receiptEditInput.click();
+          }
         });
         
       } else {
@@ -1018,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       tr.querySelector('.receipt-thumbnail-btn').addEventListener('click', () => {
-        openLightbox(exp.description, exp.receiptUrl);
+        openLightbox(exp.description, exp.receiptUrl, exp.id, eventId);
       });
       
       el.expenseRows.appendChild(tr);
@@ -1079,13 +1098,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- 12. Lightbox Preview Engine ---
-  function openLightbox(title, imgUrl) {
+  function openLightbox(title, imgUrl, expenseId, eventId) {
     appState.lightbox.zoomScale = 1.0;
     appState.lightbox.panX = 0;
     appState.lightbox.panY = 0;
+    appState.lightbox.currentExpenseId = expenseId || null;
+    appState.lightbox.currentEventId = eventId || null;
     
     el.lightboxTitle.textContent = title;
     el.lightboxImg.src = imgUrl;
+    
+    // Show/hide edit button based on whether this is an expense receipt and user has write access
+    const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+    if (el.btnEditReceipt) {
+      el.btnEditReceipt.style.display = (expenseId && hasWriteAccess) ? 'inline-flex' : 'none';
+    }
     
     updateLightboxTransform();
     
@@ -1154,6 +1181,56 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === '0') el.btnZoomReset.click();
     }
   });
+
+  // --- 12b. Edit Receipt in Lightbox ---
+  if (el.btnEditReceipt) {
+    el.btnEditReceipt.addEventListener('click', () => {
+      if (el.receiptEditInput) {
+        el.receiptEditInput.value = ''; // reset so same file can be re-selected
+        el.receiptEditInput.click();
+      }
+    });
+  }
+
+  if (el.receiptEditInput) {
+    el.receiptEditInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const newBase64 = reader.result;
+
+        // 1. Update the lightbox image immediately
+        el.lightboxImg.src = newBase64;
+
+        // 2. Update the expense record in appState
+        const expId = appState.lightbox.currentExpenseId;
+        const evtId = appState.lightbox.currentEventId;
+        if (expId && evtId) {
+          const expenseList = appState.expenses[evtId] || [];
+          const expense = expenseList.find(exp => exp.id === expId);
+          if (expense) {
+            expense.receiptUrl = newBase64;
+
+            // 3. Persist to Supabase
+            try {
+              await supabase
+                .from('expenses')
+                .update({ receipt_url: newBase64 })
+                .eq('id', expId);
+            } catch (err) {
+              console.error('Error updating receipt in Supabase:', err);
+            }
+
+            // 4. Re-render expense list so the thumbnail updates
+            renderExpenseList();
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   // --- 13a. Project CRUD (Add / Edit / Delete Audit Projects) ---
   function openProjectModal(mode = 'add', eventId = null) {

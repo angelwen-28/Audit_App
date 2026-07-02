@@ -700,7 +700,16 @@
             <div class="media-picker-container">
               
               <!-- File Upload Input Hidden -->
-              <input type="file" id="receipt-file-input" accept="image/*" class="hide">
+              <input type="file" id="receipt-file-input" onchange="el.receiptFileInput.addEventListener('change', (e) => {
+    // If a lightbox is open, this is an edit action
+    if (lightboxOverlay.classList.contains('active-lightbox')) {
+      // Update the lightbox image and stored base64
+      const img = document.getElementById('lightbox-img');
+      const title = document.getElementById('lightbox-receipt-title');
+      img.src = appState.attachedReceiptBase64 = e.target.result;
+      title.textContent = 'Receipt (Edited)';
+    }
+});" accept="image/*" class="hide">
               
               <div id="media-dropzone" class="media-dropzone">
                 <i class="fa-solid fa-cloud-arrow-up cloud-icon"></i>
@@ -777,7 +786,9 @@
         </div>
         
         <!-- Image Viewer viewport -->
-        <div class="lightbox-viewport" id="lightbox-viewport">
+        <div class="lightbox-content" id="lightbox-content">
+          <button id="btn-edit-receipt" class="btn btn-outline" style="margin-top:8px;">Edit Receipt</button>
+<input type="file" id="receipt-edit-input" accept="image/*" class="hide">
           <div class="lightbox-img-wrapper" id="lightbox-img-wrapper">
             <img id="lightbox-img" src="" alt="Receipt High Resolution" draggable="false">
           </div>

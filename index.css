@@ -1386,6 +1386,32 @@ input:focus, select:focus, textarea:focus {
   opacity: 1;
 }
 
+.btn-edit-row-receipt {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  font-size: 0.68rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.btn-edit-row-receipt:hover {
+  transform: scale(1.15);
+  background: var(--primary-hover) !important;
+}
+
+
 /* Actions cell */
 .actions-header {
   width: 80px;
