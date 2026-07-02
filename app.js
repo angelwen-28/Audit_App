@@ -312,6 +312,28 @@ document.addEventListener('DOMContentLoaded', () => {
       appState.expenses = {};
     }
   }
+  
+  // Helper to update database tables (e.g., accounts)
+  async function setDBValue(table, data) {
+    // data is an object where keys are roles (e.g., 'auditor', 'secretary')
+    const entries = Object.entries(data);
+    const promises = entries.map(([role, acc]) => {
+      const payload = {
+        role,
+        email: acc.email,
+        password: acc.password,
+        name: acc.name,
+        avatar_url: acc.avatarUrl
+      };
+      return supabase.from(table).upsert(payload);
+    });
+    const results = await Promise.all(promises);
+    const errors = results.filter(r => r.error);
+    if (errors.length) {
+      console.error('Error updating', table, errors);
+      throw errors[0].error;
+    }
+  }
 
   async function restoreSeeds() {
     appState.events = JSON.parse(JSON.stringify(SEED_DATA.events));
@@ -1523,7 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (updated) {
-      setDBValue('audit_accounts_v5', appAccounts).then(() => {
+      setDBValue('accounts', appAccounts).then(() => {
         sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
         
         // Update all UI displays
