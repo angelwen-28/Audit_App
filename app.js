@@ -929,26 +929,31 @@ document.addEventListener('DOMContentLoaded', () => {
     defaultOption.value = 'all';
     defaultOption.textContent = 'All Years';
     select.appendChild(defaultOption);
-    // Ensure a start year option is present (2025-2026)
-    const startYearOption = document.createElement('option');
-    startYearOption.value = '2025-2026';
-    startYearOption.textContent = '2025-2026';
-    select.appendChild(startYearOption);
-    // Set default selected year
-    select.value = '2025-2026';
-    // Gather unique school years
-    const years = new Set();
+
+    // Generate dynamic range based on current calendar year
+    const currentCalendarYear = new Date().getFullYear();
+    const pastSchoolYear = `${currentCalendarYear - 1}-${currentCalendarYear}`; // e.g. 2025-2026 if 2026
+    const currentSchoolYear = `${currentCalendarYear}-${currentCalendarYear + 1}`; // e.g. 2026-2027
+    const futureSchoolYear = `${currentCalendarYear + 1}-${currentCalendarYear + 2}`; // e.g. 2027-2028
+    
+    const yearsSet = new Set([pastSchoolYear, currentSchoolYear, futureSchoolYear]);
+    
+    // Also include any years existing in loaded events
     appState.events.forEach(evt => {
-      if (evt.schoolYear) years.add(evt.schoolYear);
+      if (evt.schoolYear) yearsSet.add(evt.schoolYear);
     });
-    // Sort years (optional lexical)
-    const sortedYears = Array.from(years).sort();
+    
+    // Sort and append options
+    const sortedYears = Array.from(yearsSet).sort();
     sortedYears.forEach(year => {
       const opt = document.createElement('option');
       opt.value = year;
       opt.textContent = year;
       select.appendChild(opt);
     });
+
+    // Set default selected year
+    select.value = pastSchoolYear;
   }
 
   // Populate school year options for the Project creation/editing modal
