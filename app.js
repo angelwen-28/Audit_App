@@ -1787,9 +1787,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateVal = el.expDate.value;
     const unitVal = el.expUnit.value.trim();
     const descVal = el.expDescription.value.trim();
-    const quantityVal = parseFloat(el.expQuantity.value) || 0;
+    const quantityVal = parseQuantity(el.expQuantity.value);
     const unitCostVal = parseFloat(el.expUnitCost.value) || 0;
     const amountVal = quantityVal * unitCostVal;
+    
+    if (quantityVal <= 0 || isNaN(quantityVal)) {
+      alert('Validation Error: Quantity must be a valid positive number or fraction (e.g., 1, 1/2, 1/4, 1.5, 1 1/2).');
+      return;
+    }
     
     if (!appState.attachedReceiptBase64) {
       alert('Security violation: A receipt image is required to pass audit compliance.');
@@ -2252,7 +2257,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auto-calculate total amount in modal from qty × unit cost
   function updateModalAmountDisplay() {
-    const qty = parseFloat(el.expQuantity.value) || 0;
+    const qty = parseQuantity(el.expQuantity.value);
     const cost = parseFloat(el.expUnitCost.value) || 0;
     el.expAmountDisplay.textContent = `₱${formatMoney(qty * cost)}`;
   }
@@ -2359,6 +2364,44 @@ document.addEventListener('DOMContentLoaded', () => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
+  }
+
+  // Parse quantity values supporting integers, floats, fractions (1/2), and mixed numbers (1 1/2)
+  function parseQuantity(value) {
+    if (!value) return 0;
+    const str = String(value).trim();
+    if (!str) return 0;
+
+    // Handle mixed numbers like "1 1/2" or "1-1/2"
+    const mixedParts = str.split(/[\s-]+/);
+    if (mixedParts.length > 1) {
+      let sum = 0;
+      let hasVal = false;
+      for (const part of mixedParts) {
+        const val = parseQuantity(part);
+        if (val > 0) {
+          sum += val;
+          hasVal = true;
+        }
+      }
+      return hasVal ? sum : 0;
+    }
+
+    // Handle simple fractions like "1/2"
+    if (str.includes('/')) {
+      const parts = str.split('/');
+      if (parts.length === 2) {
+        const num = parseFloat(parts[0]);
+        const den = parseFloat(parts[1]);
+        if (!isNaN(num) && !isNaN(den) && den !== 0) {
+          return num / den;
+        }
+      }
+    }
+
+    // Fallback to standard float
+    const val = parseFloat(str);
+    return isNaN(val) ? 0 : val;
   }
 
   function escapeHTML(str) {
