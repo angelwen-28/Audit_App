@@ -956,33 +956,45 @@ document.addEventListener('DOMContentLoaded', () => {
     select.value = pastSchoolYear;
   }
 
-  // Populate school year options for the Project creation/editing modal
-  function populateProjectSchoolYearSelect() {
-    const select = el.eventSchoolYearInput;
-    if (!select) return;
-    // Clear existing options
-    while (select.firstChild) {
-      select.removeChild(select.firstChild);
-    }
-    
-    // Standard school year options
-    const standardYears = ['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029', '2029-2030'];
-    const years = new Set(standardYears);
-    
-    // Also include any years existing in loaded events
-    appState.events.forEach(evt => {
-      if (evt.schoolYear) years.add(evt.schoolYear);
-    });
-    
-    // Sort and append options
-    const sortedYears = Array.from(years).sort();
-    sortedYears.forEach(year => {
-      const opt = document.createElement('option');
-      opt.value = year;
-      opt.textContent = year;
-      select.appendChild(opt);
-    });
+function populateYearDropdown(selectElement, selectedYear = null) {
+  if (!selectElement) return;
+  // Clear existing options
+  while (selectElement.firstChild) {
+    selectElement.removeChild(selectElement.firstChild);
   }
+  // Add placeholder
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.disabled = true;
+  placeholder.textContent = 'Select Year';
+  selectElement.appendChild(placeholder);
+
+  const currentYear = new Date().getFullYear();
+  const years = [
+    `${currentYear - 1}-${currentYear}`,
+    `${currentYear}-${currentYear + 1}`,
+    `${currentYear + 1}-${currentYear + 2}`,
+  ];
+  years.forEach(year => {
+    const opt = document.createElement('option');
+    opt.value = year;
+    opt.textContent = year;
+    if (year === selectedYear) opt.selected = true;
+    selectElement.appendChild(opt);
+  });
+  // If no selection provided, keep placeholder selected
+  if (!selectedYear) selectElement.value = '';
+}
+
+function populateProjectSchoolYearSelect() {
+  const select = el.eventSchoolYearInput;
+  // Determine selected year if editing a project
+  let selected = null;
+  if (select && select.dataset && select.dataset.selected) {
+    selected = select.dataset.selected;
+  }
+  populateYearDropdown(select, selected);
+}
 
   // --- 10. Inline Input Change Handlers (Auditor Trigger) ---
   async function handleInlineInputChange() {
