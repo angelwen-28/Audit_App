@@ -2412,6 +2412,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appState.events.length > 0) {
       selectEvent('overall');
     }
+    if (el.sortSelect) {
+      el.sortSelect.value = appState.filters.sort;
+    }
     // Populate the school year filter based on loaded events
     populateSchoolYearFilter();
   });
