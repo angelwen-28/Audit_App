@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     computedBalances: {},
     filters: {
       category: 'all',
-      sort: 'date-desc',
+      sort: 'date-asc',
       search: '',
       semester: 'all',
       schoolYear: 'all'
