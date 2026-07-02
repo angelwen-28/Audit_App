@@ -927,6 +927,13 @@ document.addEventListener('DOMContentLoaded', () => {
     defaultOption.value = 'all';
     defaultOption.textContent = 'All Years';
     select.appendChild(defaultOption);
+    // Ensure a start year option is present (2025-2026)
+    const startYearOption = document.createElement('option');
+    startYearOption.value = '2025-2026';
+    startYearOption.textContent = '2025-2026';
+    select.appendChild(startYearOption);
+    // Set default selected year
+    select.value = '2025-2026';
     // Gather unique school years
     const years = new Set();
     appState.events.forEach(evt => {
