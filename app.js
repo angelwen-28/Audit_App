@@ -1080,89 +1080,77 @@ function populateProjectSchoolYearSelect() {
     } else {
       actionsHeader.classList.add('hide');
     }
-    
-    filtered.forEach(exp => {
-      const tr = document.createElement('tr');
-      tr.className = 'animate-fade-in';
-      tr.dataset.expId = exp.id;
-      
-      if (hasWriteAccess) {
-        tr.innerHTML = `
-          <td data-label="Date"><input type="date" class="table-input table-input-date" data-field="date" data-exp-id="${exp.id}" value="${exp.date}"></td>
-          <td data-label="Description"><input type="text" class="table-input" data-field="description" data-exp-id="${exp.id}" value="${escapeAttr(exp.description)}"></td>
-          <td data-label="Unit" class="text-center"><input type="text" class="table-input table-input-unit" data-field="unit" data-exp-id="${exp.id}" value="${escapeAttr(exp.unit || '')}"></td>
-          <td data-label="Qty" class="text-right"><input type="number" class="table-input table-input-num" data-field="quantity" data-exp-id="${exp.id}" value="${exp.quantity || 1}" min="0" step="any"></td>
-          <td data-label="Unit Cost" class="text-right"><input type="number" class="table-input table-input-num" data-field="unitCost" data-exp-id="${exp.id}" value="${exp.unitCost || 0}" min="0" step="0.01"></td>
-          <td data-label="Amount" class="text-right font-display amount-cell" id="amount-${exp.id}" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
-          <td data-label="Receipt" class="text-center">
-            <div style="position: relative; display: inline-block;">
-              <button class="receipt-thumbnail-btn" title="Inspect Receipt">
-                <div class="thumbnail-wrapper">
-                  <img src="${exp.receiptUrl}" alt="Receipt">
-                  <div class="thumbnail-hover-overlay"><i class="fa-solid fa-magnifying-glass"></i></div>
-                </div>
-              </button>
-              <button class="btn-edit-row-receipt" data-exp-id="${exp.id}" title="Change Receipt">
-                <i class="fa-solid fa-pen"></i>
-              </button>
-            </div>
-          </td>
-          <td data-label="Actions" class="text-center actions-cell">
-            <button class="btn btn-icon btn-row-action btn-delete-expense" title="Remove Record">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
-          </td>
-        `;
-        
-        // Inline edit: fire on change (blur + value changed)
-        tr.querySelectorAll('.table-input').forEach(input => {
-          input.addEventListener('change', () => {
-            handleInlineExpenseEdit(exp.id, input.dataset.field, input.value);
-          });
-        });
-        
-        tr.querySelector('.btn-delete-expense').addEventListener('click', () => {
-          deleteExpenseRecord(exp.id);
-        });
-        
-        tr.querySelector('.btn-edit-row-receipt')?.addEventListener('click', (e) => {
-          e.stopPropagation();
-          appState.lightbox.currentExpenseId = exp.id;
-          appState.lightbox.currentEventId = eventId;
-          if (el.receiptEditInput) {
-            el.receiptEditInput.value = '';
-            el.receiptEditInput.click();
-          }
-        });
-        
-      } else {
-        tr.innerHTML = `
-          <td data-label="Date" style="font-weight: 500;">${exp.date}</td>
-          <td data-label="Description" style="color: var(--text-primary); font-weight: 600;">${escapeHTML(exp.description)}</td>
-          <td data-label="Unit" class="text-center">
-            <span class="unit-badge">${escapeHTML(exp.unit || '')}</span>
-          </td>
-          <td data-label="Qty" class="text-right">${exp.quantity || 1}</td>
-          <td data-label="Unit Cost" class="text-right">₱${formatMoney(exp.unitCost || 0)}</td>
-          <td data-label="Amount" class="text-right font-display" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
-          <td data-label="Receipt" class="text-center">
+
+// Group expenses by receipt URL and render with totals
+const groups = {};
+const order = [];
+filtered.forEach(exp => {
+  const key = exp.receiptUrl || `receipt_${exp.id}`;
+  if (!groups[key]) { groups[key] = []; order.push(key); }
+  groups[key].push(exp);
+});
+order.forEach(key => {
+  const group = groups[key];
+  // Header row for receipt group
+  const headerTr = document.createElement('tr');
+  headerTr.className = 'receipt-group-header';
+  const date = group[0].date || '';
+  headerTr.innerHTML = `<td colspan="8" class="receipt-group-header-cell">RECEIPT (${date})</td>`;
+  el.expenseRows.appendChild(headerTr);
+  // Render each expense in the group
+  group.forEach(exp => {
+    const tr = document.createElement('tr');
+    tr.className = 'animate-fade-in';
+    tr.dataset.expId = exp.id;
+    if (hasWriteAccess) {
+      tr.innerHTML = `
+        <td data-label="Date"><input type="date" class="table-input table-input-date" data-field="date" data-exp-id="${exp.id}" value="${exp.date}"/></td>
+        <td data-label="Description"><input type="text" class="table-input" data-field="description" data-exp-id="${exp.id}" value="${escapeAttr(exp.description)}"/></td>
+        <td data-label="Unit" class="text-center"><input type="text" class="table-input table-input-unit" data-field="unit" data-exp-id="${exp.id}" value="${escapeAttr(exp.unit || '')}"/></td>
+        <td data-label="Qty" class="text-right"><input type="number" class="table-input table-input-num" data-field="quantity" data-exp-id="${exp.id}" value="${exp.quantity || 1}" min="0" step="any"/></td>
+        <td data-label="Unit Cost" class="text-right"><input type="number" class="table-input table-input-num" data-field="unitCost" data-exp-id="${exp.id}" value="${exp.unitCost || 0}" min="0" step="0.01"/></td>
+        <td data-label="Amount" class="text-right font-display amount-cell" id="amount-${exp.id}" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
+        <td data-label="Receipt" class="text-center">
+          <div style="position: relative; display: inline-block;">
             <button class="receipt-thumbnail-btn" title="Inspect Receipt">
-              <div class="thumbnail-wrapper">
-                <img src="${exp.receiptUrl}" alt="Receipt">
-                <div class="thumbnail-hover-overlay"><i class="fa-solid fa-magnifying-glass"></i></div>
-              </div>
+              <div class="thumbnail-wrapper"><img src="${exp.receiptUrl}" alt="Receipt"/><div class="thumbnail-hover-overlay"><i class="fa-solid fa-magnifying-glass"></i></div></div>
             </button>
-          </td>
-          <td data-label="Actions" class="text-center actions-cell hide"></td>
-        `;
-      }
-      
-      tr.querySelector('.receipt-thumbnail-btn').addEventListener('click', () => {
-        openLightbox(exp.description, exp.receiptUrl, exp.id, eventId);
-      });
-      
-      el.expenseRows.appendChild(tr);
+            <button class="btn-edit-row-receipt" data-exp-id="${exp.id}" title="Change Receipt"><i class="fa-solid fa-pen"></i></button>
+          </div>
+        </td>
+        <td data-label="Actions" class="text-center actions-cell"><button class="btn btn-icon btn-row-action btn-delete-expense" title="Remove Record"><i class="fa-regular fa-trash-can"></i></button></td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td data-label="Date" style="font-weight: 500;">${exp.date}</td>
+        <td data-label="Description" style="color: var(--text-primary); font-weight: 600;">${escapeHTML(exp.description)}</td>
+        <td data-label="Unit" class="text-center"><span class="unit-badge">${escapeHTML(exp.unit || '')}</span></td>
+        <td data-label="Qty" class="text-right">${exp.quantity || 1}</td>
+        <td data-label="Unit Cost" class="text-right">₱${formatMoney(exp.unitCost || 0)}</td>
+        <td data-label="Amount" class="text-right font-display" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
+        <td data-label="Receipt" class="text-center"><button class="receipt-thumbnail-btn" title="Inspect Receipt"><div class="thumbnail-wrapper"><img src="${exp.receiptUrl}" alt="Receipt"/><div class="thumbnail-hover-overlay"><i class="fa-solid fa-magnifying-glass"></i></div></div></button></td>
+        <td data-label="Actions" class="text-center actions-cell hide"></td>
+      `;
+    }
+    // handlers
+    tr.querySelectorAll('.table-input').forEach(input => {
+      input.addEventListener('change', () => handleInlineExpenseEdit(exp.id, input.dataset.field, input.value));
     });
+    tr.querySelector('.btn-delete-expense')?.addEventListener('click', () => deleteExpenseRecord(exp.id));
+    tr.querySelector('.receipt-thumbnail-btn')?.addEventListener('click', () => openLightbox(exp.description, exp.receiptUrl, exp.id, eventId));
+    const editBtn = tr.querySelector('.btn-edit-row-receipt');
+    if (editBtn) {
+      editBtn.addEventListener('click', () => { if (el.receiptEditInput) { el.receiptEditInput.value=''; el.receiptEditInput.click(); } });
+    }
+    el.expenseRows.appendChild(tr);
+  });
+  // Total row for this receipt group
+  const total = group.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalTr = document.createElement('tr');
+  totalTr.className = 'receipt-group-total';
+  totalTr.innerHTML = `<td colspan="7" class="receipt-total-cell">🧾 RECEIPT TOTAL: ₱${formatMoney(total)}</td><td></td>`;
+  el.expenseRows.appendChild(totalTr);
+});
   }
 
   // --- 11b. Inline Expense Row Edit Handler ---
