@@ -138,61 +138,94 @@ document.addEventListener('DOMContentLoaded', () => {
         schoolYear: '2025-2026'
       }
     ],
+    receipts: {
+      'evt-1': [
+        {
+          id: 'rec-1',
+          date: '2026-06-12',
+          receiptUrl: 'assets/receipt_hotel.png',
+          totalAmount: 1500.00
+        },
+        {
+          id: 'rec-2',
+          date: '2026-06-12',
+          receiptUrl: 'assets/receipt_dinner.png',
+          totalAmount: 3200.00
+        },
+        {
+          id: 'rec-3',
+          date: '2026-06-12',
+          receiptUrl: 'assets/receipt_taxi.png',
+          totalAmount: 850.00
+        }
+      ],
+      'evt-2': [
+        {
+          id: 'rec-4',
+          date: '2026-06-20',
+          receiptUrl: 'assets/receipt_hotel.png',
+          totalAmount: 2500.00
+        }
+      ],
+      'evt-3': [
+        {
+          id: 'rec-5',
+          date: '2026-07-01',
+          receiptUrl: 'assets/receipt_dinner.png',
+          totalAmount: 5000.00
+        }
+      ]
+    },
     expenses: {
       'evt-1': [
         {
           id: 'exp-1',
-          date: '2026-06-12',
+          receiptId: 'rec-1',
           description: 'Sound System Rental',
           unit: 'Pc',
           quantity: 1,
           unitCost: 1500.00,
-          amount: 1500.00,
-          receiptUrl: 'assets/receipt_hotel.png'
+          amount: 1500.00
         },
         {
           id: 'exp-2',
-          date: '2026-06-12',
+          receiptId: 'rec-2',
           description: 'Food & Refreshments',
           unit: 'Pax',
           quantity: 32,
           unitCost: 100.00,
-          amount: 3200.00,
-          receiptUrl: 'assets/receipt_dinner.png'
+          amount: 3200.00
         },
         {
           id: 'exp-3',
-          date: '2026-06-12',
+          receiptId: 'rec-3',
           description: 'Tarpaulin & Printing',
           unit: 'Pc',
           quantity: 1,
           unitCost: 850.00,
-          amount: 850.00,
-          receiptUrl: 'assets/receipt_taxi.png'
+          amount: 850.00
         }
       ],
       'evt-2': [
         {
           id: 'exp-4',
-          date: '2026-06-20',
+          receiptId: 'rec-4',
           description: 'Stage Decorations',
           unit: 'Lot',
           quantity: 1,
           unitCost: 2500.00,
-          amount: 2500.00,
-          receiptUrl: 'assets/receipt_hotel.png'
+          amount: 2500.00
         }
       ],
       'evt-3': [
         {
           id: 'exp-5',
-          date: '2026-07-01',
+          receiptId: 'rec-5',
           description: 'Venue Booking Deposit',
           unit: 'Lot',
           quantity: 1,
           unitCost: 5000.00,
-          amount: 5000.00,
-          receiptUrl: 'assets/receipt_dinner.png'
+          amount: 5000.00
         }
       ]
     }
@@ -202,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let appState = {
     currentUser: null,
     events: [],
+    receipts: {},
     expenses: {},
     activeEventId: null,
     // Computed balances per event (keyed by event id)
@@ -270,12 +304,93 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (eventsError) throw eventsError;
 
-      // 3. Fetch Expenses
-      const { data: expensesData, error: expensesError } = await supabase
-        .from('expenses')
-        .select('*');
-      
-      if (expensesError) throw expensesError;
+      // 3. Fetch Receipts
+      let receiptsData = [];
+      try {
+        const { data: recData, error: recError } = await supabase
+          .from('expense_receipts')
+          .select('*');
+        if (!recError) {
+          receiptsData = recData || [];
+        }
+      } catch (err) {
+        console.error('Failed to fetch receipts table:', err);
+      }
+
+      // 4. Fetch Expenses
+      let expensesData = [];
+      try {
+        const { data: expData, error: expError } = await supabase
+          .from('expenses')
+          .select('*');
+        if (!expError) {
+          expensesData = expData || [];
+        }
+      } catch (err) {
+        console.error('Failed to fetch expenses table:', err);
+      }
+
+      // Data Migration Script check (Phase 4)
+      // Check if expenses has records but receipts table is empty (meaning old schema setup needs migration)
+      const hasOldExpenses = expensesData.length > 0 && ('receipt_url' in expensesData[0] || 'receiptUrl' in expensesData[0]);
+      if (hasOldExpenses && receiptsData.length === 0) {
+        console.log('Old schema detected in Supabase, running data migration script...');
+        const groups = {};
+        expensesData.forEach(exp => {
+          const urlKey = exp.receipt_url || exp.receiptUrl || 'assets/receipt_dinner.png';
+          const eventId = exp.event_id || exp.eventId || (eventsData[0] ? eventsData[0].id : 'evt-1');
+          const dateVal = exp.date || (eventsData[0] ? eventsData[0].date : '2026-07-04');
+          const key = `${eventId}_${urlKey}`;
+          if (!groups[key]) {
+            groups[key] = {
+              eventId: eventId,
+              date: dateVal,
+              receiptUrl: urlKey,
+              items: []
+            };
+          }
+          groups[key].items.push(exp);
+        });
+
+        for (const key of Object.keys(groups)) {
+          const group = groups[key];
+          const receiptId = 'rec-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+          const totalAmount = group.items.reduce((sum, item) => sum + (parseFloat(item.quantity || 1) * parseFloat(item.unit_cost || item.unitCost || 0)), 0);
+
+          try {
+            // Insert Receipt Box
+            await supabase.from('expense_receipts').insert({
+              id: receiptId,
+              event_id: group.eventId,
+              date: group.date,
+              receipt_url: group.receiptUrl,
+              total_amount: totalAmount
+            });
+
+            receiptsData.push({
+              id: receiptId,
+              event_id: group.eventId,
+              date: group.date,
+              receipt_url: group.receiptUrl,
+              total_amount: totalAmount
+            });
+
+            // Update Items with receipt_id
+            for (const item of group.items) {
+              await supabase.from('expenses').update({ receipt_id: receiptId }).eq('id', item.id);
+              item.receipt_id = receiptId;
+            }
+          } catch (migrateErr) {
+            console.error('Migration error for group', key, migrateErr);
+          }
+        }
+        
+        // Refetch expenses to get clean state
+        try {
+          const { data: refetchedExps } = await supabase.from('expenses').select('*');
+          if (refetchedExps) expensesData = refetchedExps;
+        } catch (e) {}
+      }
 
       if (eventsData && eventsData.length > 0) {
         appState.events = eventsData.map(evt => ({
@@ -293,21 +408,53 @@ document.addEventListener('DOMContentLoaded', () => {
           schoolYear: evt.school_year || null
         }));
 
+        appState.receipts = {};
         appState.expenses = {};
-        (expensesData || []).forEach(exp => {
-          if (!appState.expenses[exp.event_id]) {
-            appState.expenses[exp.event_id] = [];
+
+        // Load receipts
+        receiptsData.forEach(rec => {
+          const evtId = rec.event_id || rec.eventId;
+          if (!appState.receipts[evtId]) {
+            appState.receipts[evtId] = [];
           }
-          appState.expenses[exp.event_id].push({
-            id: exp.id,
-            date: exp.date,
-            description: exp.description,
-            unit: exp.unit,
-            quantity: parseFloat(exp.quantity || 1),
-            unitCost: parseFloat(exp.unit_cost || 0),
-            amount: parseFloat(exp.amount || 0),
-            receiptUrl: exp.receipt_url
+          appState.receipts[evtId].push({
+            id: rec.id,
+            eventId: evtId,
+            date: rec.date,
+            receiptUrl: rec.receipt_url || rec.receiptUrl,
+            totalAmount: parseFloat(rec.total_amount || 0)
           });
+        });
+
+        // Load expenses
+        expensesData.forEach(exp => {
+          const recId = exp.receipt_id || exp.receiptId;
+          // Find which event this receipt belongs to
+          let evtId = null;
+          for (const key of Object.keys(appState.receipts)) {
+            const found = appState.receipts[key].find(r => r.id === recId);
+            if (found) {
+              evtId = key;
+              break;
+            }
+          }
+          if (!evtId) {
+            evtId = appState.events[0]?.id;
+          }
+          if (evtId) {
+            if (!appState.expenses[evtId]) {
+              appState.expenses[evtId] = [];
+            }
+            appState.expenses[evtId].push({
+              id: exp.id,
+              receiptId: recId,
+              description: exp.description,
+              unit: exp.unit,
+              quantity: parseFloat(exp.quantity || 1),
+              unitCost: parseFloat(exp.unit_cost || 0),
+              amount: parseFloat(exp.amount || 0)
+            });
+          }
         });
       } else {
         await restoreSeeds();
@@ -319,13 +466,13 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error initializing Supabase database:', e);
       // Fallback local structures if DB query fails completely on connection error
       appState.events = [];
+      appState.receipts = {};
       appState.expenses = {};
     }
   }
   
   // Helper to update database tables (e.g., accounts)
   async function setDBValue(table, data) {
-    // data is an object where keys are roles (e.g., 'auditor', 'secretary')
     const entries = Object.entries(data);
     const promises = entries.map(([role, acc]) => {
       const payload = {
@@ -347,6 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function restoreSeeds() {
     appState.events = JSON.parse(JSON.stringify(SEED_DATA.events));
+    appState.receipts = JSON.parse(JSON.stringify(SEED_DATA.receipts));
     appState.expenses = JSON.parse(JSON.stringify(SEED_DATA.expenses));
     
     // Save seeds to Supabase
@@ -367,19 +515,37 @@ document.addEventListener('DOMContentLoaded', () => {
       const { error: evtError } = await supabase.from('events').insert(dbEvents);
       if (evtError) throw evtError;
 
+      // Receipts
+      const dbReceipts = [];
+      Object.keys(appState.receipts).forEach(eventId => {
+        appState.receipts[eventId].forEach(rec => {
+          dbReceipts.push({
+            id: rec.id,
+            event_id: eventId,
+            date: rec.date,
+            receipt_url: rec.receiptUrl,
+            total_amount: rec.totalAmount
+          });
+        });
+      });
+
+      if (dbReceipts.length > 0) {
+        const { error: recError } = await supabase.from('expense_receipts').insert(dbReceipts);
+        if (recError) throw recError;
+      }
+
+      // Expenses
       const dbExpenses = [];
       Object.keys(appState.expenses).forEach(eventId => {
         appState.expenses[eventId].forEach(exp => {
           dbExpenses.push({
             id: exp.id,
-            event_id: eventId,
-            date: exp.date,
+            receipt_id: exp.receiptId,
             description: exp.description,
             unit: exp.unit,
             quantity: exp.quantity,
             unit_cost: exp.unitCost,
-            amount: exp.amount,
-            receipt_url: exp.receiptUrl
+            amount: exp.amount
           });
         });
       });
@@ -410,8 +576,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const sanctionsTotal = evt.sanctions || 0;
       const totalPool = prevBalance + studentCollection + membershipTotal + sanctionsTotal;
 
+      const receiptsList = appState.receipts[evt.id] || [];
       const expensesList = appState.expenses[evt.id] || [];
-      const totalExpenses = expensesList.reduce((sum, item) => sum + item.amount, 0);
+
+      // Auto-Sum logic (Phase 1): calculate totalAmount of receipt boxes
+      receiptsList.forEach(rec => {
+        const childItems = expensesList.filter(item => item.receiptId === rec.id);
+        rec.totalAmount = childItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+      });
+
+      const totalExpenses = receiptsList.reduce((sum, rec) => sum + rec.totalAmount, 0);
       const netRemaining = totalPool - totalExpenses;
 
       appState.computedBalances[evt.id] = {
@@ -523,6 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
     expenseRows: document.getElementById('expense-rows'),
     expenseEmpty: document.getElementById('expense-empty-state'),
     btnAddExpenseFab: document.getElementById('btn-add-expense-fab'),
+    btnAddExpense: document.getElementById('btn-add-expense'),
     btnExportPdf: document.getElementById('btn-export-pdf'),
     
     // Upload Modal
@@ -531,10 +706,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCancelModal: document.getElementById('btn-cancel-modal'),
     addExpenseForm: document.getElementById('add-expense-form'),
     expDate: document.getElementById('exp-date'),
-    expUnit: document.getElementById('exp-unit'),
-    expDescription: document.getElementById('exp-description'),
-    expQuantity: document.getElementById('exp-quantity'),
-    expUnitCost: document.getElementById('exp-unit-cost'),
     expAmountDisplay: document.getElementById('exp-amount-display'),
     receiptFileInput: document.getElementById('receipt-file-input'),
     mediaDropzone: document.getElementById('media-dropzone'),
@@ -680,19 +851,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateUIPermissions() {
+    // Always show the Add Expense FAB and Add Project button regardless of role
+    el.btnAddExpenseFab.classList.remove('hide');
+    el.btnAddProject.classList.remove('hide');
+    // Determine write access for inline input editability
     const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
-    
-    if (hasWriteAccess) {
-      el.btnAddExpenseFab.classList.remove('hide');
-      el.btnAddProject.classList.remove('hide');
-    } else {
-      el.btnAddExpenseFab.classList.add('hide');
-      el.btnAddProject.classList.add('hide');
-    }
-    
-    // Toggle inline input editability
     setInlineInputsEditable(hasWriteAccess);
-    
     if (appState.activeEventId) {
       renderExpenseList();
     }
@@ -1040,168 +1204,212 @@ function populateProjectSchoolYearSelect() {
     input.addEventListener('input', handleInlineInputChange);
   });
 
-  // --- 11. Expense List Rendering ---
+  // --- 11. Expense Card Rendering & Inline Handlers ---
   function renderExpenseList() {
     const eventId = appState.activeEventId === 'overall'
       ? appState.events[appState.events.length - 1].id
       : appState.activeEventId;
     if (!eventId) return;
     
+    const receiptsList = appState.receipts[eventId] || [];
     const expensesList = appState.expenses[eventId] || [];
     
-    // Sort only (no category filter)
     const activeSort = el.sortSelect.value;
-    let filtered = [...expensesList];
-    filtered.sort((a, b) => {
+    let filteredReceipts = [...receiptsList];
+    filteredReceipts.sort((a, b) => {
       if (activeSort === 'date-desc') return new Date(b.date) - new Date(a.date);
       if (activeSort === 'date-asc') return new Date(a.date) - new Date(b.date);
-      if (activeSort === 'amount-desc') return b.amount - a.amount;
-      if (activeSort === 'amount-asc') return a.amount - b.amount;
+      if (activeSort === 'amount-desc') return b.totalAmount - a.totalAmount;
+      if (activeSort === 'amount-asc') return a.totalAmount - b.totalAmount;
       return 0;
     });
     
-    el.expenseCount.textContent = filtered.length;
-    el.expenseRows.innerHTML = '';
+    const cardsContainer = document.getElementById('expense-cards-container');
+    if (!cardsContainer) return;
+
+    el.expenseCount.textContent = expensesList.length;
+    cardsContainer.innerHTML = '';
     
-    if (filtered.length === 0) {
+    if (filteredReceipts.length === 0) {
       el.expenseEmpty.classList.remove('hide');
-      el.expenseRows.parentElement.classList.add('hide');
+      cardsContainer.classList.add('hide');
       return;
     }
     
     el.expenseEmpty.classList.add('hide');
-    el.expenseRows.parentElement.classList.remove('hide');
+    cardsContainer.classList.remove('hide');
     
     const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
     
-    const actionsHeader = document.querySelector('.actions-header');
-    if (hasWriteAccess) {
-      actionsHeader.classList.remove('hide');
-    } else {
-      actionsHeader.classList.add('hide');
-    }
-
-// Group expenses by receipt URL and render with totals
-const groups = {};
-const order = [];
-filtered.forEach(exp => {
-  const key = exp.receiptUrl || `receipt_${exp.id}`;
-  if (!groups[key]) { groups[key] = []; order.push(key); }
-  groups[key].push(exp);
-});
-order.forEach(key => {
-  const group = groups[key];
-  // Header row for receipt group
-  const headerTr = document.createElement('tr');
-  headerTr.className = 'receipt-group-header';
-  const date = group[0].date || '';
-  headerTr.innerHTML = `<td colspan="8" class="receipt-group-header-cell">RECEIPT (${date})</td>`;
-  el.expenseRows.appendChild(headerTr);
-  // Render each expense in the group
-  group.forEach(exp => {
-    const tr = document.createElement('tr');
-    tr.className = 'animate-fade-in';
-    tr.dataset.expId = exp.id;
-    if (hasWriteAccess) {
-      tr.innerHTML = `
-        <td data-label="Date"><input type="date" class="table-input table-input-date" data-field="date" data-exp-id="${exp.id}" value="${exp.date}"/></td>
-        <td data-label="Description"><input type="text" class="table-input" data-field="description" data-exp-id="${exp.id}" value="${escapeAttr(exp.description)}"/></td>
-        <td data-label="Unit" class="text-center"><input type="text" class="table-input table-input-unit" data-field="unit" data-exp-id="${exp.id}" value="${escapeAttr(exp.unit || '')}"/></td>
-        <td data-label="Qty" class="text-right"><input type="number" class="table-input table-input-num" data-field="quantity" data-exp-id="${exp.id}" value="${exp.quantity || 1}" min="0" step="any"/></td>
-        <td data-label="Unit Cost" class="text-right"><input type="number" class="table-input table-input-num" data-field="unitCost" data-exp-id="${exp.id}" value="${exp.unitCost || 0}" min="0" step="0.01"/></td>
-        <td data-label="Amount" class="text-right font-display amount-cell" id="amount-${exp.id}" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
-        <td data-label="Receipt" class="text-center">
-          <div style="position: relative; display: inline-block;">
-            <button class="receipt-thumbnail-btn" title="Inspect Receipt">
-              <div class="thumbnail-wrapper"><img src="${exp.receiptUrl}" alt="Receipt"/><div class="thumbnail-hover-overlay"><i class="fa-solid fa-magnifying-glass"></i></div></div>
-            </button>
-            <button class="btn-edit-row-receipt" data-exp-id="${exp.id}" title="Change Receipt"><i class="fa-solid fa-pen"></i></button>
+    filteredReceipts.forEach(rec => {
+      const recItems = expensesList.filter(item => item.receiptId === rec.id);
+      
+      const card = document.createElement('div');
+      card.className = 'receipt-box-card';
+      
+      let itemsRowsHtml = '';
+      recItems.forEach(item => {
+        if (hasWriteAccess) {
+          itemsRowsHtml += `
+            <tr data-item-id="${item.id}">
+              <td data-label="Description"><input type="text" class="table-input item-desc-input" data-field="description" data-item-id="${item.id}" value="${escapeAttr(item.description)}"/></td>
+              <td data-label="Unit" class="text-center"><input type="text" class="table-input table-input-unit item-unit-input" data-field="unit" data-item-id="${item.id}" value="${escapeAttr(item.unit || '')}"/></td>
+              <td data-label="Qty" class="text-right"><input type="number" class="table-input table-input-num item-qty-input" data-field="quantity" data-item-id="${item.id}" value="${item.quantity || 1}" min="0" step="any"/></td>
+              <td data-label="Unit Cost" class="text-right"><input type="number" class="table-input table-input-num item-cost-input" data-field="unitCost" data-item-id="${item.id}" value="${item.unitCost || 0}" min="0" step="0.01"/></td>
+              <td data-label="Amount" class="text-right font-display amount-cell" id="amount-${item.id}" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(item.amount)}</td>
+            </tr>
+          `;
+        } else {
+          itemsRowsHtml += `
+            <tr>
+              <td data-label="Description" style="color: var(--text-primary); font-weight: 600;">${escapeHTML(item.description)}</td>
+              <td data-label="Unit" class="text-center"><span class="unit-badge">${escapeHTML(item.unit || '')}</span></td>
+              <td data-label="Qty" class="text-right">${item.quantity || 1}</td>
+              <td data-label="Unit Cost" class="text-right">₱${formatMoney(item.unitCost || 0)}</td>
+              <td data-label="Amount" class="text-right font-display" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(item.amount)}</td>
+            </tr>
+          `;
+        }
+      });
+      
+      card.innerHTML = `
+        <div class="receipt-card-left">
+          <div class="receipt-card-header">
+            <div class="receipt-card-title">
+              <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Receipt Box
+            </div>
+            <div class="receipt-card-date">${formatDateString(rec.date)}</div>
           </div>
-        </td>
-        <td data-label="Actions" class="text-center actions-cell"><button class="btn btn-icon btn-row-action btn-delete-expense" title="Remove Record"><i class="fa-regular fa-trash-can"></i></button></td>
+          <table class="receipt-card-items">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th class="text-center" style="width: 80px;">Unit</th>
+                <th class="text-right" style="width: 80px;">Qty</th>
+                <th class="text-right" style="width: 100px;">Unit Cost</th>
+                <th class="text-right" style="width: 120px;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsRowsHtml}
+            </tbody>
+          </table>
+          <div class="receipt-card-footer">
+            <div class="receipt-card-total-badge">
+              🧾 Total Amount: ₱${formatMoney(rec.totalAmount)}
+            </div>
+          </div>
+        </div>
+        <div class="receipt-card-right">
+          <div class="receipt-card-preview-box" title="View Full Receipt">
+            <img src="${rec.receiptUrl}" alt="Receipt Preview">
+            <div class="receipt-card-preview-overlay">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+          </div>
+          ${hasWriteAccess ? `
+            <button class="btn btn-outline btn-block text-danger btn-delete-receipt" style="font-size: 0.8rem; border-color: rgba(239, 68, 68, 0.4); display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <i class="fa-regular fa-trash-can"></i> Delete Box
+            </button>
+          ` : ''}
+        </div>
       `;
-    } else {
-      tr.innerHTML = `
-        <td data-label="Date" style="font-weight: 500;">${exp.date}</td>
-        <td data-label="Description" style="color: var(--text-primary); font-weight: 600;">${escapeHTML(exp.description)}</td>
-        <td data-label="Unit" class="text-center"><span class="unit-badge">${escapeHTML(exp.unit || '')}</span></td>
-        <td data-label="Qty" class="text-right">${exp.quantity || 1}</td>
-        <td data-label="Unit Cost" class="text-right">₱${formatMoney(exp.unitCost || 0)}</td>
-        <td data-label="Amount" class="text-right font-display" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(exp.amount)}</td>
-        <td data-label="Receipt" class="text-center"><button class="receipt-thumbnail-btn" title="Inspect Receipt"><div class="thumbnail-wrapper"><img src="${exp.receiptUrl}" alt="Receipt"/><div class="thumbnail-hover-overlay"><i class="fa-solid fa-magnifying-glass"></i></div></div></button></td>
-        <td data-label="Actions" class="text-center actions-cell hide"></td>
-      `;
-    }
-    // handlers
-    tr.querySelectorAll('.table-input').forEach(input => {
-      input.addEventListener('change', () => handleInlineExpenseEdit(exp.id, input.dataset.field, input.value));
+      
+      card.querySelector('.receipt-card-preview-box').addEventListener('click', () => {
+        openLightbox(`Receipt (${rec.date})`, rec.receiptUrl, rec.id, eventId);
+      });
+      
+      if (hasWriteAccess) {
+        card.querySelector('.btn-delete-receipt').addEventListener('click', () => {
+          deleteReceiptBox(rec.id);
+        });
+        
+        card.querySelectorAll('.table-input').forEach(input => {
+          input.addEventListener('change', (e) => {
+            const itemId = input.dataset.itemId;
+            const field = input.dataset.field;
+            const value = input.value;
+            handleInlineItemEdit(itemId, field, value, rec.id);
+          });
+        });
+      }
+      
+      cardsContainer.appendChild(card);
     });
-    tr.querySelector('.btn-delete-expense')?.addEventListener('click', () => deleteExpenseRecord(exp.id));
-    tr.querySelector('.receipt-thumbnail-btn')?.addEventListener('click', () => openLightbox(exp.description, exp.receiptUrl, exp.id, eventId));
-    const editBtn = tr.querySelector('.btn-edit-row-receipt');
-    if (editBtn) {
-      editBtn.addEventListener('click', () => { if (el.receiptEditInput) { el.receiptEditInput.value=''; el.receiptEditInput.click(); } });
-    }
-    el.expenseRows.appendChild(tr);
-  });
-  // Total row for this receipt group
-  const total = group.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const totalTr = document.createElement('tr');
-  totalTr.className = 'receipt-group-total';
-  totalTr.innerHTML = `<td colspan="7" class="receipt-total-cell">🧾 RECEIPT TOTAL: ₱${formatMoney(total)}</td><td></td>`;
-  el.expenseRows.appendChild(totalTr);
-});
   }
 
-  // --- 11b. Inline Expense Row Edit Handler ---
-  async function handleInlineExpenseEdit(expenseId, field, value) {
+  async function deleteReceiptBox(receiptId) {
     const eventId = appState.activeEventId === 'overall'
       ? appState.events[appState.events.length - 1].id
       : appState.activeEventId;
     if (!eventId) return;
     
-    const expenseList = appState.expenses[eventId] || [];
-    const expense = expenseList.find(e => e.id === expenseId);
-    if (!expense) return;
+    const confirmDelete = confirm('Verify signature: Are you sure you want to permanently delete this Receipt Box and all its inner items?');
+    if (!confirmDelete) return;
     
-    if (field === 'quantity') {
-      expense.quantity = parseFloat(value) || 0;
-      expense.amount = expense.quantity * (expense.unitCost || 0);
-    } else if (field === 'unitCost') {
-      expense.unitCost = parseFloat(value) || 0;
-      expense.amount = (expense.quantity || 0) * expense.unitCost;
-    } else if (field === 'date') {
-      expense.date = value;
-    } else if (field === 'description') {
-      expense.description = value;
-    } else if (field === 'unit') {
-      expense.unit = value;
-    }
+    appState.receipts[eventId] = (appState.receipts[eventId] || []).filter(r => r.id !== receiptId);
+    appState.expenses[eventId] = (appState.expenses[eventId] || []).filter(item => item.receiptId !== receiptId);
     
-    // Update only the amount cell — no full re-render (preserves focus)
-    const amountCell = document.getElementById(`amount-${expenseId}`);
-    if (amountCell) amountCell.textContent = `₱${formatMoney(expense.amount)}`;
-    
-    // Cascade recalculation
     computeAllBalances();
     
-    // Save to Supabase
     try {
-      await supabase
-        .from('expenses')
-        .update({
-          date: expense.date,
-          description: expense.description,
-          unit: expense.unit,
-          quantity: expense.quantity,
-          unit_cost: expense.unitCost,
-          amount: expense.amount
-        })
-        .eq('id', expenseId);
-    } catch (e) {
-      console.error('Error updating expense in Supabase', e);
+      await supabase.from('expense_receipts').delete().eq('id', receiptId);
+    } catch (err) {
+      console.error('Error deleting receipt in Supabase', err);
     }
+    
+    populateFinanceColumns(eventId);
+    renderExpenseList();
+    renderEventList();
+  }
 
+  async function handleInlineItemEdit(itemId, field, value, receiptId) {
+    const eventId = appState.activeEventId === 'overall'
+      ? appState.events[appState.events.length - 1].id
+      : appState.activeEventId;
+    if (!eventId) return;
+    
+    const itemsList = appState.expenses[eventId] || [];
+    const item = itemsList.find(i => i.id === itemId);
+    if (!item) return;
+    
+    if (field === 'quantity') {
+      item.quantity = parseFloat(value) || 0;
+      item.amount = item.quantity * (item.unitCost || 0);
+    } else if (field === 'unitCost') {
+      item.unitCost = parseFloat(value) || 0;
+      item.amount = (item.quantity || 0) * item.unitCost;
+    } else if (field === 'description') {
+      item.description = value;
+    } else if (field === 'unit') {
+      item.unit = value;
+    }
+    
+    const amountCell = document.getElementById(`amount-${itemId}`);
+    if (amountCell) amountCell.textContent = `₱${formatMoney(item.amount)}`;
+    
+    computeAllBalances();
+    renderExpenseList();
+    
+    try {
+      await supabase.from('expenses').update({
+        description: item.description,
+        unit: item.unit,
+        quantity: item.quantity,
+        unit_cost: item.unitCost,
+        amount: item.amount
+      }).eq('id', itemId);
+      
+      const rec = appState.receipts[eventId].find(r => r.id === receiptId);
+      if (rec) {
+        await supabase.from('expense_receipts').update({
+          total_amount: rec.totalAmount
+        }).eq('id', receiptId);
+      }
+    } catch (e) {
+      console.error('Error updating item in Supabase', e);
+    }
+    
     populateFinanceColumns(eventId);
     renderEventList();
   }
@@ -1531,12 +1739,64 @@ order.forEach(key => {
   }
 
   // --- 13. Auditor Upload Flow & Asset Commit ---
+  const repeaterContainer = document.getElementById('repeater-items-container');
+  const btnAddRepeaterRow = document.getElementById('btn-add-repeater-row');
+
+  function addRepeaterRow(description = '', unit = '', quantity = 1, unitCost = '') {
+    const rowId = 'row-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+    const row = document.createElement('div');
+    row.className = 'repeater-row';
+    row.dataset.rowId = rowId;
+    row.innerHTML = `
+      <input type="text" class="table-input rep-desc" placeholder="e.g. Sound Rental" value="${escapeAttr(description)}" required />
+      <input type="text" class="table-input table-input-unit rep-unit" placeholder="Pc/Lot" value="${escapeAttr(unit)}" required />
+      <input type="text" class="table-input table-input-num rep-qty" placeholder="1" value="${quantity}" required />
+      <input type="number" class="table-input table-input-num rep-cost" placeholder="0.00" step="0.01" min="0" value="${unitCost}" required />
+      <button type="button" class="btn-remove-row" title="Remove Row"><i class="fa-solid fa-xmark"></i></button>
+    `;
+
+    row.querySelector('.rep-qty').addEventListener('input', updateRepeaterGrandTotal);
+    row.querySelector('.rep-cost').addEventListener('input', updateRepeaterGrandTotal);
+    row.querySelector('.btn-remove-row').addEventListener('click', () => {
+      row.remove();
+      updateRepeaterGrandTotal();
+    });
+
+    repeaterContainer.appendChild(row);
+    updateRepeaterGrandTotal();
+  }
+
+  function updateRepeaterGrandTotal() {
+    let grandTotal = 0;
+    const rows = repeaterContainer.querySelectorAll('.repeater-row');
+    rows.forEach(row => {
+      const qtyStr = row.querySelector('.rep-qty').value;
+      const qty = parseQuantity(qtyStr);
+      const cost = parseFloat(row.querySelector('.rep-cost').value) || 0;
+      grandTotal += qty * cost;
+    });
+    el.expAmountDisplay.textContent = `₱${formatMoney(grandTotal)}`;
+  }
+
+  // Wire Add row button
+  if (btnAddRepeaterRow) {
+    btnAddRepeaterRow.addEventListener('click', () => {
+      addRepeaterRow('', '', 1, '');
+    });
+  }
+
   function openUploadModal() {
     appState.attachedReceiptBase64 = null;
     el.addExpenseForm.reset();
     
     const today = new Date().toISOString().split('T')[0];
     el.expDate.value = today;
+    
+    if (repeaterContainer) {
+      repeaterContainer.innerHTML = '';
+      // Start with 1 blank row
+      addRepeaterRow('', '', 1, '');
+    }
     
     resetMediaUploader();
     el.uploadModal.classList.add('active-modal');
@@ -1557,7 +1817,6 @@ order.forEach(key => {
     
     appState.profileAvatarPendingBase64 = null;
     
-    // Set Header/Avatar details
     el.profileNameLabel.textContent = name;
     el.profileEmailLabel.textContent = email;
     
@@ -1567,7 +1826,6 @@ order.forEach(key => {
       el.profileAvatar.innerHTML = `<span style="font-family: var(--font-display);">${name.charAt(0)}</span>`;
     }
     
-    // Set role badge styling
     el.profileRoleBadge.textContent = role;
     if (role === 'auditor') {
       el.profileRoleBadge.className = 'user-role-badge badge-auditor';
@@ -1577,8 +1835,6 @@ order.forEach(key => {
       el.profileRoleBadge.className = 'user-role-badge badge-student';
     }
     
-    // Toggle contents
-    // If student, pre-fill their current name in the name input
     if (role === 'student') {
       el.adminProfileSettings.classList.add('hide');
       el.studentProfileInfo.classList.remove('hide');
@@ -1609,13 +1865,11 @@ order.forEach(key => {
     const role = appState.currentUser.role;
     const currentAccount = appAccounts[role];
     
-    // Verify password
     if (currentPassword !== currentAccount.password) {
       alert('Security validation failed: The current password you entered is incorrect.');
       return;
     }
     
-    // Apply updates
     let updated = false;
     if (newName) {
       currentAccount.name = newName;
@@ -1624,7 +1878,6 @@ order.forEach(key => {
     }
 
     if (newEmail) {
-      // Validate that it doesn't conflict with the other account's email
       const otherRole = role === 'auditor' ? 'secretary' : 'auditor';
       if (newEmail === appAccounts[otherRole].email) {
         alert('Validation failed: That email address is already registered to the other administrative account.');
@@ -1651,7 +1904,6 @@ order.forEach(key => {
       setDBValue('accounts', appAccounts)
         .then(() => {
           sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
-          // Update all UI displays
           el.userDisplayName.textContent = appState.currentUser.name;
           el.profileNameLabel.textContent = appState.currentUser.name;
           el.profileEmailLabel.textContent = appState.currentUser.email;
@@ -1740,24 +1992,44 @@ order.forEach(key => {
     ctx.fillText('STATUS: VERIFIED BY AUDITOR', 40, 180);
     ctx.fillText('====================================', 40, 210);
     
-    const desc = el.expDescription.value || 'Audit Item Expense';
-    const amountVal = parseFloat(el.expAmount.value) || 0.0;
+    // Sum from repeater rows for camera text
+    let grandTotal = 0;
+    const rows = repeaterContainer.querySelectorAll('.repeater-row');
+    let textY = 240;
+    ctx.font = '13px Courier New';
     
-    ctx.font = 'bold 16px Courier New';
-    ctx.fillText(desc.substring(0, 20).toUpperCase(), 40, 240);
-    ctx.textAlign = 'right';
-    ctx.fillText('₱' + formatMoney(amountVal), 360, 240);
+    rows.forEach((row, i) => {
+      if (i < 3) {
+        const desc = row.querySelector('.rep-desc').value || `Item ${i+1}`;
+        const qtyStr = row.querySelector('.rep-qty').value;
+        const qty = parseQuantity(qtyStr);
+        const cost = parseFloat(row.querySelector('.rep-cost').value) || 0;
+        const amt = qty * cost;
+        grandTotal += amt;
+        
+        ctx.textAlign = 'left';
+        ctx.fillText(desc.substring(0, 15).toUpperCase(), 40, textY);
+        ctx.textAlign = 'right';
+        ctx.fillText('₱' + formatMoney(amt), 360, textY);
+        textY += 25;
+      } else if (i === 3) {
+        ctx.textAlign = 'left';
+        ctx.fillText('... MORE ITEMS', 40, textY);
+        textY += 25;
+      }
+    });
     
     ctx.textAlign = 'left';
+    ctx.font = 'bold 16px Courier New';
     ctx.fillText('SUBTOTAL:', 40, 350);
     ctx.font = 'bold 18px Courier New';
     ctx.fillText('TOTAL DUE:', 40, 415);
     
     ctx.textAlign = 'right';
     ctx.font = '16px Courier New';
-    ctx.fillText('₱' + formatMoney(amountVal), 360, 350);
+    ctx.fillText('₱' + formatMoney(grandTotal), 360, 350);
     ctx.font = 'bold 18px Courier New';
-    ctx.fillText('₱' + formatMoney(amountVal), 360, 415);
+    ctx.fillText('₱' + formatMoney(grandTotal), 360, 415);
     
     ctx.textAlign = 'center';
     ctx.font = '12px Inter';
@@ -1785,21 +2057,54 @@ order.forEach(key => {
     if (!eventId) return;
     
     const dateVal = el.expDate.value;
-    const unitVal = el.expUnit.value.trim();
-    const descVal = el.expDescription.value.trim();
-    const quantityVal = parseQuantity(el.expQuantity.value);
-    const unitCostVal = parseFloat(el.expUnitCost.value) || 0;
-    const amountVal = quantityVal * unitCostVal;
-    
-    if (quantityVal <= 0 || isNaN(quantityVal)) {
-      alert('Validation Error: Quantity must be a valid positive number or fraction (e.g., 1, 1/2, 1/4, 1.5, 1 1/2).');
-      return;
-    }
-    
     if (!appState.attachedReceiptBase64) {
       alert('Security violation: A receipt image is required to pass audit compliance.');
       return;
     }
+    
+    const rows = repeaterContainer.querySelectorAll('.repeater-row');
+    if (rows.length === 0) {
+      alert('Validation Error: At least one expense item is required.');
+      return;
+    }
+    
+    // Parse and validate items
+    const itemsToSubmit = [];
+    let grandTotal = 0;
+    let hasValidationError = false;
+    
+    rows.forEach((row, index) => {
+      const descVal = row.querySelector('.rep-desc').value.trim();
+      const unitVal = row.querySelector('.rep-unit').value.trim();
+      const qtyStr = row.querySelector('.rep-qty').value;
+      const quantityVal = parseQuantity(qtyStr);
+      const unitCostVal = parseFloat(row.querySelector('.rep-cost').value) || 0;
+      
+      if (!descVal) {
+        alert(`Validation Error on Row ${index + 1}: Description is required.`);
+        hasValidationError = true;
+        return;
+      }
+      if (quantityVal <= 0 || isNaN(quantityVal)) {
+        alert(`Validation Error on Row ${index + 1}: Quantity must be a valid positive number or fraction.`);
+        hasValidationError = true;
+        return;
+      }
+      
+      const amountVal = quantityVal * unitCostVal;
+      grandTotal += amountVal;
+      
+      itemsToSubmit.push({
+        id: 'exp-' + Date.now() + '-' + index + '-' + Math.floor(Math.random() * 100),
+        description: descVal,
+        unit: unitVal,
+        quantity: quantityVal,
+        unitCost: unitCostVal,
+        amount: amountVal
+      });
+    });
+    
+    if (hasValidationError) return;
     
     el.btnSubmitExpense.disabled = true;
     el.btnCancelModal.disabled = true;
@@ -1816,41 +2121,56 @@ order.forEach(key => {
         progress = 100;
         clearInterval(interval);
         
-        const newExpense = {
-          id: 'exp-' + Date.now(),
+        const receiptId = 'rec-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+        const newReceipt = {
+          id: receiptId,
+          eventId: eventId,
           date: dateVal,
-          description: descVal,
-          unit: unitVal,
-          quantity: quantityVal,
-          unitCost: unitCostVal,
-          amount: amountVal,
-          receiptUrl: appState.attachedReceiptBase64
+          receiptUrl: appState.attachedReceiptBase64,
+          totalAmount: grandTotal
         };
         
+        if (!appState.receipts[eventId]) {
+          appState.receipts[eventId] = [];
+        }
+        appState.receipts[eventId].push(newReceipt);
+        
+        // Link all items to receipt box
         if (!appState.expenses[eventId]) {
           appState.expenses[eventId] = [];
         }
-        appState.expenses[eventId].push(newExpense);
         
-        // Recompute cascading balances
+        itemsToSubmit.forEach(item => {
+          item.receiptId = receiptId;
+          appState.expenses[eventId].push(item);
+        });
+        
         computeAllBalances();
         
-        // Save new expense to Supabase
+        // Persist to Supabase (Phase 3 Submission Payload)
         try {
-          const dbExpense = {
-            id: newExpense.id,
+          // 1. Insert parent receipt box
+          await supabase.from('expense_receipts').insert({
+            id: receiptId,
             event_id: eventId,
-            date: newExpense.date,
-            description: newExpense.description,
-            unit: newExpense.unit,
-            quantity: newExpense.quantity,
-            unit_cost: newExpense.unitCost,
-            amount: newExpense.amount,
-            receipt_url: newExpense.receiptUrl
-          };
-          await supabase.from('expenses').insert(dbExpense);
+            date: dateVal,
+            receipt_url: appState.attachedReceiptBase64,
+            total_amount: grandTotal
+          });
+          
+          // 2. Insert all items
+          const dbExpenses = itemsToSubmit.map(item => ({
+            id: item.id,
+            receipt_id: receiptId,
+            description: item.description,
+            unit: item.unit,
+            quantity: item.quantity,
+            unit_cost: item.unitCost,
+            amount: item.amount
+          }));
+          await supabase.from('expenses').insert(dbExpenses);
         } catch (err) {
-          console.error('Error inserting expense into Supabase', err);
+          console.error('Error saving new receipt box assets to Supabase', err);
         }
         
         setTimeout(() => {
@@ -1865,32 +2185,6 @@ order.forEach(key => {
       el.uploadProgressBar.style.width = progress + '%';
       el.uploadProgressPercent.textContent = progress + '%';
     }, 100);
-  }
-
-  async function deleteExpenseRecord(expenseId) {
-    const eventId = appState.activeEventId === 'overall'
-      ? appState.events[appState.events.length - 1].id
-      : appState.activeEventId;
-    if (!eventId) return;
-    
-    const confirmDelete = confirm('Verify signature: Are you sure you want to permanently purge this auditing record?');
-    if (!confirmDelete) return;
-    
-    const list = appState.expenses[eventId] || [];
-    appState.expenses[eventId] = list.filter(item => item.id !== expenseId);
-    
-    computeAllBalances();
-    
-    // Delete in Supabase
-    try {
-      await supabase.from('expenses').delete().eq('id', expenseId);
-    } catch (err) {
-      console.error('Error deleting expense in Supabase', err);
-    }
-    
-    populateFinanceColumns(eventId);
-    renderExpenseList();
-    renderEventList();
   }
 
   // --- 14. PDF Document Compiler & Exporter ---
@@ -1918,9 +2212,11 @@ order.forEach(key => {
     
     let rowsHtml = '';
     expensesList.forEach(exp => {
+      const rec = (appState.receipts[eventId] || []).find(r => r.id === exp.receiptId);
+      const dateStr = rec ? rec.date : '';
       rowsHtml += `
         <tr style="border-bottom: 1px solid #e2e8f0;">
-          <td style="padding: 10px 12px; font-size: 12px;">${exp.date}</td>
+          <td style="padding: 10px 12px; font-size: 12px;">${dateStr}</td>
           <td style="padding: 10px 12px; font-weight: 600; font-size: 12px;">${escapeHTML(exp.description)}</td>
           <td style="padding: 10px 12px; font-size: 12px; text-align: center;">${escapeHTML(exp.unit || '')}</td>
           <td style="padding: 10px 12px; font-size: 12px; text-align: right;">${exp.quantity || 1}</td>
@@ -2255,16 +2551,9 @@ order.forEach(key => {
 
   el.sortSelect.addEventListener('change', renderExpenseList);
 
-  // Auto-calculate total amount in modal from qty × unit cost
-  function updateModalAmountDisplay() {
-    const qty = parseQuantity(el.expQuantity.value);
-    const cost = parseFloat(el.expUnitCost.value) || 0;
-    el.expAmountDisplay.textContent = `₱${formatMoney(qty * cost)}`;
-  }
-  el.expQuantity.addEventListener('input', updateModalAmountDisplay);
-  el.expUnitCost.addEventListener('input', updateModalAmountDisplay);
 
   el.btnAddExpenseFab.addEventListener('click', openUploadModal);
+  el.btnAddExpense.addEventListener('click', openUploadModal);
   
   el.btnCloseModal.addEventListener('click', closeUploadModal);
   el.btnCancelModal.addEventListener('click', closeUploadModal);

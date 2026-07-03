@@ -413,23 +413,9 @@
             
             <!-- Expense Items Container -->
             <div class="expense-list-table-container">
-              <table class="expense-table" id="expense-table-element">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th class="text-center">Unit</th>
-                    <th class="text-right">Qty</th>
-                    <th class="text-right">Unit Cost</th>
-                    <th class="text-right">Amount</th>
-                    <th class="text-center">Receipt</th>
-                    <th class="text-center actions-header">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="expense-rows">
-                  <!-- Expense rows injected by JS -->
-                </tbody>
-              </table>
+              <div id="expense-cards-container" class="receipt-cards-container">
+                <!-- Receipt Box cards injected by JS -->
+              </div>
               <div id="expense-empty-state" class="expense-empty-state hide">
                 <i class="fa-solid fa-receipt"></i>
                 <p>No expenses found matching the active filters.</p>
@@ -441,6 +427,7 @@
       </div>
       
       <!-- Floating Action Button for Auditors -->
+       <button id="btn-add-expense" class="btn btn-primary" style="margin: 8px;">Add Expense</button>
       <button id="btn-add-expense-fab" class="fab-btn" title="Add Expense Record">
   <i class="fa-solid fa-plus"></i>
 </button>
@@ -686,45 +673,22 @@
         </div>
         
         <form id="add-expense-form" class="modal-form">
+          <!-- Master Form Fields -->
           <div class="form-row-2">
             <div class="form-group">
-              <label for="exp-date"><i class="fa-regular fa-calendar"></i> Expense Date</label>
+              <label for="exp-date"><i class="fa-regular fa-calendar"></i> Receipt Date</label>
               <input type="date" id="exp-date" required>
             </div>
-            
             <div class="form-group">
-              <label for="exp-unit"><i class="fa-solid fa-box-archive"></i> Unit</label>
-              <input type="text" id="exp-unit" placeholder="e.g. Pc, Pcs, Kilo, Lot, Pax" required>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="exp-description"><i class="fa-solid fa-pen-to-square"></i> Description</label>
-            <input type="text" id="exp-description" placeholder="e.g. Sound System Rental, Food Catering" required>
-          </div>
-          
-          <div class="form-row-3">
-            <div class="form-group">
-              <label for="exp-quantity"><i class="fa-solid fa-hashtag"></i> Quantity</label>
-              <input type="text" id="exp-quantity" placeholder="e.g. 1, 1/2, 1/4" value="1" required>
-            </div>
-            
-            <div class="form-group">
-              <label for="exp-unit-cost"><i class="fa-solid fa-peso-sign"></i> Unit Cost</label>
-              <input type="number" id="exp-unit-cost" step="0.01" min="0" placeholder="0.00" required>
-            </div>
-            
-            <div class="form-group">
-              <label><i class="fa-solid fa-calculator"></i> Total Amount</label>
-              <div class="amount-computed-display" id="exp-amount-display">₱0.00</div>
+              <label><i class="fa-solid fa-calculator"></i> Grand Total</label>
+              <div class="amount-computed-display" id="exp-amount-display" style="font-weight: 800; color: var(--primary);">₱0.00</div>
             </div>
           </div>
           
           <!-- Media Asset Picker & Upload -->
           <div class="form-group">
-            <label><i class="fa-regular fa-images"></i> Receipt Documentation</label>
+            <label><i class="fa-regular fa-images"></i> Receipt Image Documentation</label>
             <div class="media-picker-container">
-              
               <!-- File Upload Input Hidden -->
               <input type="file" id="receipt-file-input" accept="image/*" class="hide">
               
@@ -765,8 +729,24 @@
                   <div id="upload-progress-bar" class="upload-progress-fill"></div>
                 </div>
               </div>
-              
             </div>
+          </div>
+
+          <!-- Dynamic Row Repeater -->
+          <div class="repeater-section">
+            <div class="repeater-header-labels">
+              <div>Description</div>
+              <div>Unit</div>
+              <div>Qty</div>
+              <div>Unit Cost</div>
+              <div></div>
+            </div>
+            <div id="repeater-items-container">
+              <!-- Item rows will be dynamically appended here by JS -->
+            </div>
+            <button type="button" id="btn-add-repeater-row" class="btn btn-outline btn-small" style="margin-top: 10px; width: 100%; font-weight: 700; color: var(--primary); border-color: rgba(249, 115, 22, 0.4);">
+              <i class="fa-solid fa-plus"></i> (+) Add Another Item
+            </button>
           </div>
           
           <div class="modal-footer">

@@ -22,17 +22,25 @@ CREATE TABLE IF NOT EXISTS events (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
 );
 
--- Create expenses table
-CREATE TABLE IF NOT EXISTS expenses (
+-- Create expense_receipts table
+CREATE TABLE IF NOT EXISTS expense_receipts (
     id TEXT PRIMARY KEY,
     event_id TEXT REFERENCES events(id) ON DELETE CASCADE,
     date DATE NOT NULL,
+    receipt_url TEXT,
+    total_amount NUMERIC DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
+-- Create expenses table
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    receipt_id TEXT REFERENCES expense_receipts(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
     unit TEXT,
     quantity NUMERIC DEFAULT 1,
     unit_cost NUMERIC DEFAULT 0,
     amount NUMERIC DEFAULT 0,
-    receipt_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
 );
 
@@ -40,6 +48,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 -- To allow public read/write access for this demo app, you can run:
 ALTER TABLE accounts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE events DISABLE ROW LEVEL SECURITY;
+ALTER TABLE expense_receipts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
 
 -- Add semester (1 or 2) and school_year columns to events table
