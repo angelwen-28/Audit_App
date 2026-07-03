@@ -697,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
     expenseRows: document.getElementById('expense-rows'),
     expenseEmpty: document.getElementById('expense-empty-state'),
     btnAddExpenseFab: document.getElementById('btn-add-expense-fab'),
-    btnAddExpense: document.getElementById('btn-add-expense'),
+
     btnExportPdf: document.getElementById('btn-export-pdf'),
     
     // Upload Modal
@@ -2553,7 +2553,7 @@ function populateProjectSchoolYearSelect() {
 
 
   el.btnAddExpenseFab.addEventListener('click', openUploadModal);
-  el.btnAddExpense.addEventListener('click', openUploadModal);
+
   
   el.btnCloseModal.addEventListener('click', closeUploadModal);
   el.btnCancelModal.addEventListener('click', closeUploadModal);
