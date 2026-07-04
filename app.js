@@ -2191,7 +2191,7 @@ function populateProjectSchoolYearSelect() {
           });
           if (recErr) throw recErr;
           
-          // 2. Insert all items
+          // 2. Insert all child expense items (snake_case only — Supabase rejects unknown columns)
           const dbExpenses = itemsToSubmit.map(item => ({
             id: item.id,
             receipt_id: receiptId,
