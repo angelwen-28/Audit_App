@@ -2564,6 +2564,27 @@ function populateProjectSchoolYearSelect() {
     });
   }
 
+  // Hook up sync ledger button handler
+  const btnSyncLedger = document.getElementById('btn-sync-ledger');
+  if (btnSyncLedger) {
+    btnSyncLedger.addEventListener('click', async () => {
+      const icon = btnSyncLedger.querySelector('i');
+      if (icon) icon.classList.add('fa-spin');
+      btnSyncLedger.disabled = true;
+      try {
+        await initDatabase();
+        if (appState.activeEventId) {
+          selectEvent(appState.activeEventId);
+        }
+      } catch (err) {
+        console.error('Ledger sync failed:', err);
+      } finally {
+        if (icon) icon.classList.remove('fa-spin');
+        btnSyncLedger.disabled = false;
+      }
+    });
+  }
+
   el.eventSearch.addEventListener('input', (e) => {
     appState.filters.search = e.target.value;
     renderEventList();

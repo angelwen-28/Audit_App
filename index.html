@@ -399,7 +399,12 @@
             
             <!-- Expenses List Controls -->
             <div class="list-controls-bar">
-              <h3>Expense Records (<span id="expense-count">0</span>)</h3>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h3>Expense Records (<span id="expense-count">0</span>)</h3>
+                <button id="btn-sync-ledger" class="btn btn-outline btn-small" title="Sync Ledger Database" style="padding: 6px 10px; font-size: 0.75rem; border-color: rgba(249, 115, 22, 0.3); color: var(--primary);">
+                  <i class="fa-solid fa-rotate"></i> Sync
+                </button>
+              </div>
               
               <div class="filter-group">
                 <select id="expense-sort">
