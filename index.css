@@ -804,7 +804,8 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Empty State styling */
@@ -1963,19 +1964,25 @@ input:focus, select:focus, textarea:focus {
     grid-template-columns: 1fr;
     gap: 16px;
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;   /* prevent horizontal scroll */
+    overflow-y: visible;  /* allow content to flow and scroll naturally */
   }
   
   .sidebar-panel {
     display: block;
     width: 100%;
     height: auto;
-    max-height: 80vh;
+    max-height: none;
+    overflow-y: auto;
   }
   
   .main-panel {
     display: none;
     width: 100%;
+    overflow-x: hidden;
+    overflow-y: visible; /* let content scroll with the page */
+    height: auto !important;
+    min-height: 0;
   }
   
   /* Show detail panel and hide sidebar panel when show-detail class is applied */
@@ -2515,6 +2522,7 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 768px) {
   .receipt-box-card {
     flex-direction: column;
+    overflow: visible; /* allow content to flow, not clip */
   }
   .receipt-card-right {
     width: 100%;
@@ -2525,6 +2533,16 @@ input:focus, select:focus, textarea:focus {
   }
   .receipt-card-left {
     border-right: none;
+    overflow: visible; /* don't clip table */
+    padding: 14px;
+  }
+  /* Make expense table horizontally scrollable on mobile */
+  .receipt-card-left .receipt-card-items-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .receipt-card-items {
+    min-width: 420px; /* ensure table fits within scrollable container */
   }
   .repeater-row, .repeater-header-labels {
     grid-template-columns: 1fr;
@@ -2537,5 +2555,12 @@ input:focus, select:focus, textarea:focus {
     width: 100%;
     height: auto;
     padding: 10px;
+  }
+  /* ensure expense records section is visible and scrollable */
+  .expense-list-table-container {
+    overflow: visible;
+  }
+  .receipt-cards-container {
+    overflow: visible;
   }
 }

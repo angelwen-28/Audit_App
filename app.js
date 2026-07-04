@@ -1295,6 +1295,7 @@ function populateProjectSchoolYearSelect() {
             </div>
             <div class="receipt-card-date">${formatDateString(rec.date)}</div>
           </div>
+          <div class="receipt-card-items-wrapper" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
           <table class="receipt-card-items">
             <thead>
               <tr>
@@ -1309,6 +1310,7 @@ function populateProjectSchoolYearSelect() {
               ${itemsRowsHtml}
             </tbody>
           </table>
+          </div>
           <div class="receipt-card-footer">
             <div class="receipt-card-total-badge">
               🧾 Total Amount: ₱${formatMoney(rec.totalAmount)}
