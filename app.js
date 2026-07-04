@@ -2182,13 +2182,14 @@ function populateProjectSchoolYearSelect() {
         // Persist to Supabase (Phase 3 Submission Payload)
         try {
           // 1. Insert parent receipt box
-          await supabase.from('expense_receipts').insert({
+          const { error: recErr } = await supabase.from('expense_receipts').insert({
             id: receiptId,
             event_id: eventId,
             date: dateVal,
             receipt_url: appState.attachedReceiptBase64,
             total_amount: grandTotal
           });
+          if (recErr) throw recErr;
           
           // 2. Insert all items
           const dbExpenses = itemsToSubmit.map(item => ({
@@ -2200,9 +2201,11 @@ function populateProjectSchoolYearSelect() {
             unit_cost: item.unitCost,
             amount: item.amount
           }));
-          await supabase.from('expenses').insert(dbExpenses);
+          const { error: expErr } = await supabase.from('expenses').insert(dbExpenses);
+          if (expErr) throw expErr;
         } catch (err) {
           console.error('Error saving new receipt box assets to Supabase', err);
+          alert('Database Save Error: ' + err.message);
         }
         
         setTimeout(() => {
