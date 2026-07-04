@@ -805,8 +805,15 @@ document.addEventListener('DOMContentLoaded', () => {
     el.authView.classList.remove('active-view');
     el.dashboardView.classList.add('active-view');
     
+    const isMobile = window.innerWidth <= 768;
     if (!appState.activeEventId && appState.events.length > 0) {
-      selectEvent('overall');
+      if (isMobile) {
+        // On mobile: stay on the sidebar/project list so the user can tap a project
+        renderEventList();
+      } else {
+        // On desktop: auto-select overall dashboard view
+        selectEvent('overall');
+      }
     } else {
       renderEventList();
     }
