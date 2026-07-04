@@ -2580,12 +2580,8 @@ function populateProjectSchoolYearSelect() {
   el.sortSelect.addEventListener('change', renderExpenseList);
 
 
-  // Hide/disable Add Expense button for students
-  if (appState.currentUser && appState.currentUser.role !== 'student') {
-    el.btnAddExpenseFab.addEventListener('click', openUploadModal);
-  } else {
-    el.btnAddExpenseFab.classList.add('hide');
-  }
+  // Always attach the click listener; role-based blocking is handled inside openUploadModal
+  el.btnAddExpenseFab.addEventListener('click', openUploadModal);
 
   
   el.btnCloseModal.addEventListener('click', closeUploadModal);
