@@ -1752,6 +1752,7 @@ function populateProjectSchoolYearSelect() {
       <input type="text" class="table-input table-input-unit rep-unit" placeholder="Pc/Lot" value="${escapeAttr(unit)}" required />
       <input type="text" class="table-input table-input-num rep-qty" placeholder="1" value="${quantity}" required />
       <input type="number" class="table-input table-input-num rep-cost" placeholder="0.00" step="0.01" min="0" value="${unitCost}" required />
+      <input type="text" class="table-input table-input-num rep-amount" placeholder="0.00" readonly />
       <button type="button" class="btn-remove-row" title="Remove Row"><i class="fa-solid fa-xmark"></i></button>
     `;
 
@@ -1773,7 +1774,9 @@ function populateProjectSchoolYearSelect() {
       const qtyStr = row.querySelector('.rep-qty').value;
       const qty = parseQuantity(qtyStr);
       const cost = parseFloat(row.querySelector('.rep-cost').value) || 0;
-      grandTotal += qty * cost;
+      const amount = qty * cost;
+      row.querySelector('.rep-amount').value = amount.toFixed(2);
+      grandTotal += amount;
     });
     el.expAmountDisplay.textContent = `₱${formatMoney(grandTotal)}`;
   }
