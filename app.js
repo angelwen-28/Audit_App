@@ -1325,7 +1325,7 @@ function populateProjectSchoolYearSelect() {
             </div>
           </div>
           ${hasWriteAccess ? `
-            <button class="btn btn-outline btn-block text-danger btn-delete-receipt" style="font-size: 0.8rem; border-color: rgba(239, 68, 68, 0.4); display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <button class="btn btn-outline btn-block text-danger btn-delete-receipt" style="font-size: 0.8rem; border-color: rgba(239, 68, 68, 0.4); color: var(--danger) !important; display: flex; align-items: center; justify-content: center; gap: 6px;">
               <i class="fa-regular fa-trash-can"></i> Delete Box
             </button>
           ` : ''}
