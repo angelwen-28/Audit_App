@@ -851,11 +851,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateUIPermissions() {
-    // Always show the Add Expense FAB and Add Project button regardless of role
-    el.btnAddExpenseFab.classList.remove('hide');
-    el.btnAddProject.classList.remove('hide');
-    // Determine write access for inline input editability
+    // Determine write access (auditor and secretary only)
     const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+
+    // Show/hide Add Project and Add Expense FAB based on role
+    if (hasWriteAccess) {
+      el.btnAddExpenseFab.classList.remove('hide');
+      el.btnAddProject.classList.remove('hide');
+    } else {
+      // Students can only VIEW — hide all add/edit controls
+      el.btnAddExpenseFab.classList.add('hide');
+      el.btnAddProject.classList.add('hide');
+    }
+
     setInlineInputsEditable(hasWriteAccess);
     if (appState.activeEventId) {
       renderExpenseList();
@@ -1605,6 +1613,12 @@ function populateProjectSchoolYearSelect() {
   }
 
   async function handleProjectFormSubmit(e) {
+    // Prevent students from creating projects
+    if (appState.currentUser && appState.currentUser.role === 'student') {
+      alert('Access denied: Students cannot create or modify projects.');
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
 
     const id = el.projectIdHidden.value;
@@ -1775,7 +1789,7 @@ function populateProjectSchoolYearSelect() {
       const qty = parseQuantity(qtyStr);
       const cost = parseFloat(row.querySelector('.rep-cost').value) || 0;
       const amount = qty * cost;
-      row.querySelector('.rep-amount').value = amount.toFixed(2);
+      row.querySelector('.rep-amount').value = formatMoney(amount);
       grandTotal += amount;
     });
     el.expAmountDisplay.textContent = `₱${formatMoney(grandTotal)}`;
@@ -2052,6 +2066,12 @@ function populateProjectSchoolYearSelect() {
   }
 
   function commitExpenseRecord(e) {
+    // Prevent students from adding expenses
+    if (appState.currentUser && appState.currentUser.role === 'student') {
+      alert('Access denied: Students cannot add expenses.');
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
     
     const eventId = appState.activeEventId === 'overall'
@@ -2422,7 +2442,12 @@ function populateProjectSchoolYearSelect() {
   el.btnLogout.addEventListener('click', logout);
 
   // Project modal listeners
-  el.btnAddProject.addEventListener('click', () => openProjectModal('add'));
+  // Hide/disable Add Project button for students
+  if (appState.currentUser && appState.currentUser.role !== 'student') {
+    el.btnAddProject.addEventListener('click', () => openProjectModal('add'));
+  } else {
+    el.btnAddProject.classList.add('hide');
+  }
   el.btnCloseProjectModal.addEventListener('click', closeProjectModal);
   el.btnCancelProject.addEventListener('click', closeProjectModal);
   el.projectForm.addEventListener('submit', handleProjectFormSubmit);
@@ -2555,7 +2580,12 @@ function populateProjectSchoolYearSelect() {
   el.sortSelect.addEventListener('change', renderExpenseList);
 
 
-  el.btnAddExpenseFab.addEventListener('click', openUploadModal);
+  // Hide/disable Add Expense button for students
+  if (appState.currentUser && appState.currentUser.role !== 'student') {
+    el.btnAddExpenseFab.addEventListener('click', openUploadModal);
+  } else {
+    el.btnAddExpenseFab.classList.add('hide');
+  }
 
   
   el.btnCloseModal.addEventListener('click', closeUploadModal);
