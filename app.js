@@ -2450,13 +2450,8 @@ function populateProjectSchoolYearSelect() {
 
   el.btnLogout.addEventListener('click', logout);
 
-  // Project modal listeners
-  // Hide/disable Add Project button for students
-  if (appState.currentUser && appState.currentUser.role !== 'student') {
-    el.btnAddProject.addEventListener('click', () => openProjectModal('add'));
-  } else {
-    el.btnAddProject.classList.add('hide');
-  }
+  // Always attach click listener; permissions UI visibility handled by updateUIPermissions
+  el.btnAddProject.addEventListener('click', () => openProjectModal('add'));
   el.btnCloseProjectModal.addEventListener('click', closeProjectModal);
   el.btnCancelProject.addEventListener('click', closeProjectModal);
   el.projectForm.addEventListener('submit', handleProjectFormSubmit);

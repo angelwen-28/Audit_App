@@ -2042,19 +2042,19 @@ input:focus, select:focus, textarea:focus {
   }
   
   /* Transform the desktop layout table into mobile-friendly stacked cards */
-  .expense-table thead {
+  .receipt-card-items thead {
     display: none !important;
   }
   
-  .expense-table, 
-  .expense-table tbody, 
-  .expense-table tr, 
-  .expense-table td {
+  .receipt-card-items, 
+  .receipt-card-items tbody, 
+  .receipt-card-items tr, 
+  .receipt-card-items td {
     display: block !important;
     width: 100% !important;
   }
   
-  .expense-table tr {
+  .receipt-card-items tr {
     background: rgba(255, 255, 255, 0.4) !important;
     border: 1px solid var(--border-glass) !important;
     border-radius: var(--radius-sm) !important;
@@ -2063,7 +2063,7 @@ input:focus, select:focus, textarea:focus {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02) !important;
   }
   
-  .expense-table td {
+  .receipt-card-items td {
     border-bottom: none !important;
     padding: 8px 0 !important;
     display: flex !important;
@@ -2073,8 +2073,8 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.85rem !important;
     text-align: right !important;
   }
-
-  .expense-table td::before {
+  
+  .receipt-card-items td::before {
     content: attr(data-label) !important;
     font-weight: 700 !important;
     color: var(--text-secondary) !important;
@@ -2085,13 +2085,13 @@ input:focus, select:focus, textarea:focus {
   }
   
   /* Adjust inputs inside stacked td cards so they align nicely */
-  .expense-table td input {
+  .receipt-card-items td input {
     max-width: 160px !important;
     text-align: right !important;
     padding: 6px 10px !important;
   }
   
-  .expense-table td.actions-cell {
+  .receipt-card-items td.actions-cell {
     justify-content: flex-end !important;
   }
   
