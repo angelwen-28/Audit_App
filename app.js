@@ -17,7 +17,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // Register Service Worker for PWA installation
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker registered with scope:', reg.scope))
+      .then(reg => {
+        console.log('Service Worker registered with scope:', reg.scope);
+        reg.onupdatefound = () => {
+          const installingWorker = reg.installing;
+          if (installingWorker) {
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed') {
+                if (navigator.serviceWorker.controller) {
+                  console.log('[PWA] New content is available; prompting refresh.');
+                  if (confirm('A new version of the app is available. Refresh now to update?')) {
+                    window.location.reload();
+                  }
+                }
+              }
+            };
+          }
+        };
+      })
       .catch(err => console.error('Service Worker registration failed:', err));
   }
 
@@ -322,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const { data: expData, error: expError } = await supabase
           .from('expenses')
-          .select('*');
+          .select('id,receipt_id,description,unit,quantity,unit_cost,amount');
         if (!expError) {
           expensesData = expData || [];
         }
@@ -331,12 +348,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Data Migration Script check (Phase 4)
-      // Check if expenses has records but receipts table is empty (meaning old schema setup needs migration)
-      const hasOldExpenses = expensesData.length > 0 && ('receipt_url' in expensesData[0] || 'receiptUrl' in expensesData[0]);
-      if (hasOldExpenses && receiptsData.length === 0) {
-        console.log('Old schema detected in Supabase, running data migration script...');
+      // Check if there are any old expenses that have receipt_url but no receipt_id
+      let unmigratedExps = [];
+      try {
+        const { data: oldExps, error: oldExpsErr } = await supabase
+          .from('expenses')
+          .select('id,receipt_id,description,unit,quantity,unit_cost,amount,receipt_url,event_id,date')
+          .is('receipt_id', null);
+        if (!oldExpsErr && oldExps) {
+          unmigratedExps = oldExps.filter(exp => exp.receipt_url || exp.receiptUrl);
+        }
+      } catch (err) {
+        console.error('Failed to fetch unmigrated expenses:', err);
+      }
+
+      if (unmigratedExps.length > 0) {
+        console.log('Unmigrated legacy expenses detected, running data migration...');
         const groups = {};
-        expensesData.forEach(exp => {
+        unmigratedExps.forEach(exp => {
           const urlKey = exp.receipt_url || exp.receiptUrl || 'assets/receipt_dinner.png';
           const eventId = exp.event_id || exp.eventId || (eventsData[0] ? eventsData[0].id : 'evt-1');
           const dateVal = exp.date || (eventsData[0] ? eventsData[0].date : '2026-07-04');
@@ -378,18 +407,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update Items with receipt_id
             for (const item of group.items) {
               await supabase.from('expenses').update({ receipt_id: receiptId }).eq('id', item.id);
-              item.receipt_id = receiptId;
+              const localMatch = expensesData.find(e => e.id === item.id);
+              if (localMatch) {
+                localMatch.receipt_id = receiptId;
+              }
             }
           } catch (migrateErr) {
             console.error('Migration error for group', key, migrateErr);
           }
         }
-        
-        // Refetch expenses to get clean state
-        try {
-          const { data: refetchedExps } = await supabase.from('expenses').select('*');
-          if (refetchedExps) expensesData = refetchedExps;
-        } catch (e) {}
       }
 
       if (eventsData && eventsData.length > 0) {

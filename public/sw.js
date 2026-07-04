@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aegis-auditor-cache-v2';
+const CACHE_NAME = 'aegis-auditor-cache-v4';
 const ASSETS = [
   '/',
   '/index.html',
