@@ -1615,17 +1615,33 @@ function populateProjectSchoolYearSelect() {
   let pendingEditReceiptPhotoBase64 = null;
 
   function openEditReceiptModal(receiptId, eventId) {
-    if (!receiptId || !eventId) return;
+    console.log('openEditReceiptModal triggered for receipt:', receiptId, 'event:', eventId);
+    if (!receiptId || !eventId) {
+      console.error('openEditReceiptModal: receiptId or eventId is missing');
+      return;
+    }
     
-    const rec = (appState.receipts[eventId] || []).find(r => r.id === receiptId);
-    if (!rec) return;
+    const recs = appState.receipts[eventId] || [];
+    const rec = recs.find(r => r.id === receiptId);
+    if (!rec) {
+      console.error('openEditReceiptModal: receipt not found in state receipts for event', eventId, 'Receipts list:', recs);
+      alert('Error: Receipt not found in local appState.');
+      return;
+    }
+    
+    if (!el.editReceiptModal) {
+      console.error('openEditReceiptModal: el.editReceiptModal is null');
+      alert('Error: el.editReceiptModal element is null');
+      return;
+    }
     
     el.editReceiptIdHidden.value = receiptId;
-    el.editReceiptDate.value = rec.date;
-    el.editReceiptPreviewImage.src = rec.receiptUrl;
-    pendingEditReceiptPhotoBase64 = rec.receiptUrl;
+    el.editReceiptDate.value = rec.date || '';
+    el.editReceiptPreviewImage.src = rec.receiptUrl || '';
+    pendingEditReceiptPhotoBase64 = rec.receiptUrl || '';
     
     el.editReceiptModal.classList.add('active-modal');
+    console.log('openEditReceiptModal: active-modal class added to modal');
   }
 
   function closeEditReceiptModal() {
