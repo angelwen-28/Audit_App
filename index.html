@@ -802,6 +802,46 @@
           <p><i class="fa-solid fa-hand-pointer animate-pulse"></i> Click and drag to pan when zoomed</p>
         </div>
         
+    </div>
+
+    <!-- 6. Edit Receipt Box Modal -->
+    <div id="edit-receipt-modal" class="modal-overlay">
+      <div class="modal-card glass-panel animate-scale-in" style="max-width: 500px;">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-pen-to-square"></i> Edit Receipt Box</h3>
+          <button id="btn-close-edit-receipt-modal" class="btn-close">&times;</button>
+        </div>
+        
+        <form id="edit-receipt-form" class="modal-form">
+          <input type="hidden" id="edit-receipt-id-hidden">
+          
+          <div class="form-group">
+            <label for="edit-receipt-date"><i class="fa-regular fa-calendar"></i> Receipt Date</label>
+            <input type="date" id="edit-receipt-date" required>
+          </div>
+          
+          <div class="form-group">
+            <label><i class="fa-regular fa-images"></i> Receipt Image</label>
+            <input type="file" id="edit-receipt-file-input" accept="image/*" class="hide">
+            
+            <div id="edit-receipt-preview-container" class="media-preview-container" style="margin-top: 10px;">
+              <div class="preview-thumbnail-wrapper" style="width: 100%; height: auto; max-height: 250px; overflow: hidden; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                <img id="edit-receipt-preview-image" src="" alt="Receipt Preview" style="width: 100%; height: auto; object-fit: contain; max-height: 250px;">
+              </div>
+            </div>
+            
+            <button type="button" id="btn-edit-receipt-select-file" class="btn btn-outline btn-block" style="margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <i class="fa-solid fa-camera"></i> Change Image
+            </button>
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" id="btn-cancel-edit-receipt" class="btn btn-outline">Cancel</button>
+            <button type="submit" id="btn-submit-edit-receipt" class="btn btn-primary">
+              <i class="fa-solid fa-floppy-disk"></i> Save Changes
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 

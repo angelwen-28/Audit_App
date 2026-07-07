@@ -759,6 +759,18 @@ document.addEventListener('DOMContentLoaded', () => {
     btnEditReceipt: document.getElementById('btn-edit-receipt'),
     receiptEditInput: document.getElementById('receipt-edit-input'),
 
+    // Edit Receipt Box Modal
+    editReceiptModal: document.getElementById('edit-receipt-modal'),
+    btnCloseEditReceiptModal: document.getElementById('btn-close-edit-receipt-modal'),
+    btnCancelEditReceipt: document.getElementById('btn-cancel-edit-receipt'),
+    editReceiptForm: document.getElementById('edit-receipt-form'),
+    editReceiptIdHidden: document.getElementById('edit-receipt-id-hidden'),
+    editReceiptDate: document.getElementById('edit-receipt-date'),
+    editReceiptFileInput: document.getElementById('edit-receipt-file-input'),
+    editReceiptPreviewImage: document.getElementById('edit-receipt-preview-image'),
+    btnEditReceiptSelectFile: document.getElementById('btn-edit-receipt-select-file'),
+    btnSubmitEditReceipt: document.getElementById('btn-submit-edit-receipt'),
+
     // Project Management Modal
     btnAddProject: document.getElementById('btn-add-project'),
     projectModal: document.getElementById('project-modal'),
@@ -1351,6 +1363,9 @@ function populateProjectSchoolYearSelect() {
             </div>
           </div>
           ${hasWriteAccess ? `
+            <button class="btn btn-outline btn-block btn-edit-receipt-box" style="font-size: 0.8rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); color: var(--primary); font-weight: 600; cursor: pointer; transition: background 0.2s;">
+              <i class="fa-regular fa-pen-to-square"></i> Edit Box
+            </button>
             <button class="btn btn-outline btn-block text-danger btn-delete-receipt" style="font-size: 0.8rem; border-color: rgba(239, 68, 68, 0.4); color: var(--danger) !important; display: flex; align-items: center; justify-content: center; gap: 6px;">
               <i class="fa-regular fa-trash-can"></i> Delete Box
             </button>
@@ -1363,6 +1378,10 @@ function populateProjectSchoolYearSelect() {
       });
       
       if (hasWriteAccess) {
+        card.querySelector('.btn-edit-receipt-box').addEventListener('click', () => {
+          openEditReceiptModal(rec.id, eventId);
+        });
+
         card.querySelector('.btn-delete-receipt').addEventListener('click', () => {
           deleteReceiptBox(rec.id);
         });
@@ -1564,21 +1583,21 @@ function populateProjectSchoolYearSelect() {
         // 1. Update the lightbox image immediately
         el.lightboxImg.src = newBase64;
 
-        // 2. Update the expense record in appState
-        const expId = appState.lightbox.currentExpenseId;
+        // 2. Update the receipt record in appState
+        const recId = appState.lightbox.currentExpenseId; // receipt box ID
         const evtId = appState.lightbox.currentEventId;
-        if (expId && evtId) {
-          const expenseList = appState.expenses[evtId] || [];
-          const expense = expenseList.find(exp => exp.id === expId);
-          if (expense) {
-            expense.receiptUrl = newBase64;
+        if (recId && evtId) {
+          const recList = appState.receipts[evtId] || [];
+          const rec = recList.find(r => r.id === recId);
+          if (rec) {
+            rec.receiptUrl = newBase64;
 
             // 3. Persist to Supabase
             try {
               await supabase
-                .from('expenses')
+                .from('expense_receipts')
                 .update({ receipt_url: newBase64 })
-                .eq('id', expId);
+                .eq('id', recId);
             } catch (err) {
               console.error('Error updating receipt in Supabase:', err);
             }
@@ -1589,6 +1608,101 @@ function populateProjectSchoolYearSelect() {
         }
       };
       reader.readAsDataURL(file);
+    });
+  }
+
+  // --- 12c. Edit Receipt Box Modal Logic ---
+  let pendingEditReceiptPhotoBase64 = null;
+
+  function openEditReceiptModal(receiptId, eventId) {
+    if (!receiptId || !eventId) return;
+    
+    const rec = (appState.receipts[eventId] || []).find(r => r.id === receiptId);
+    if (!rec) return;
+    
+    el.editReceiptIdHidden.value = receiptId;
+    el.editReceiptDate.value = rec.date;
+    el.editReceiptPreviewImage.src = rec.receiptUrl;
+    pendingEditReceiptPhotoBase64 = rec.receiptUrl;
+    
+    el.editReceiptModal.classList.add('active-modal');
+  }
+
+  function closeEditReceiptModal() {
+    el.editReceiptModal.classList.remove('active-modal');
+  }
+
+  if (el.btnCloseEditReceiptModal) {
+    el.btnCloseEditReceiptModal.addEventListener('click', closeEditReceiptModal);
+  }
+  if (el.btnCancelEditReceipt) {
+    el.btnCancelEditReceipt.addEventListener('click', closeEditReceiptModal);
+  }
+
+  if (el.btnEditReceiptSelectFile) {
+    el.btnEditReceiptSelectFile.addEventListener('click', () => {
+      if (el.editReceiptFileInput) {
+        el.editReceiptFileInput.click();
+      }
+    });
+  }
+
+  if (el.editReceiptFileInput) {
+    el.editReceiptFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingEditReceiptPhotoBase64 = reader.result;
+        el.editReceiptPreviewImage.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (el.editReceiptForm) {
+    el.editReceiptForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const receiptId = el.editReceiptIdHidden.value;
+      const dateVal = el.editReceiptDate.value;
+      const eventId = appState.activeEventId === 'overall'
+        ? appState.events[appState.events.length - 1].id
+        : appState.activeEventId;
+        
+      if (!receiptId || !eventId) return;
+      
+      const rec = (appState.receipts[eventId] || []).find(r => r.id === receiptId);
+      if (!rec) return;
+      
+      // Update in local state
+      rec.date = dateVal;
+      rec.receiptUrl = pendingEditReceiptPhotoBase64;
+      
+      // Recompute and sort events
+      sortEventsChronologically();
+      computeAllBalances();
+      
+      // Save changes to Supabase
+      try {
+        await supabase
+          .from('expense_receipts')
+          .update({
+            date: dateVal,
+            receipt_url: pendingEditReceiptPhotoBase64
+          })
+          .eq('id', receiptId);
+      } catch (err) {
+        console.error('Error updating receipt box in Supabase:', err);
+        alert('Database Update Error: ' + err.message);
+      }
+      
+      closeEditReceiptModal();
+      populateFinanceColumns(eventId);
+      renderExpenseList();
+      renderEventList();
+      alert('Asset Updated: Record changes have been committed to the secure ledger.');
     });
   }
 
@@ -2727,6 +2841,9 @@ function populateProjectSchoolYearSelect() {
     }
     if (e.target === el.projectModal) {
       closeProjectModal();
+    }
+    if (e.target === el.editReceiptModal) {
+      closeEditReceiptModal();
     }
   });
 
