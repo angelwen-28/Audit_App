@@ -237,10 +237,40 @@
           
           <!-- Overall IITSO Funds Dashboard View -->
           <div id="overall-dashboard-view" class="overall-dashboard hide">
-            <div class="overall-balance-card glass-panel">
-              <span class="balance-label">IITSO FUNDS BALANCE</span>
-              <h2 id="overall-net-balance">₱0.00</h2>
-              <p class="balance-meta">Based on the latest chronological event carry-over</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+              <div class="overall-balance-card glass-panel" style="margin-bottom: 0;">
+                <span class="balance-label"><i class="fa-solid fa-wallet"></i> IITSO EVENT FUNDS</span>
+                <h2 id="overall-net-balance">₱0.00</h2>
+                <p class="balance-meta">Active pooled funds for audit events</p>
+              </div>
+              <div class="overall-balance-card glass-panel" style="margin-bottom: 0; background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(249, 115, 22, 0.03)); border-color: rgba(16, 185, 129, 0.25);">
+                <span class="balance-label" style="color: var(--success);"><i class="fa-solid fa-store"></i> KIOSK RESERVE FUNDS</span>
+                <h2 id="overall-kiosk-balance" style="color: var(--success);">₱0.00</h2>
+                <p class="balance-meta">Reserved safety fund (accumulates leftovers / covers deficits)</p>
+              </div>
+            </div>
+
+            <!-- Kiosk Funds Ledger History Table -->
+            <div class="glass-panel" style="padding: 24px; border-radius: var(--radius-md);">
+              <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-clock-rotate-left" style="color: var(--success);"></i> Kiosk Funds Reserve Ledger History
+              </h3>
+              <div style="overflow-x: auto;">
+                <table class="expense-table" style="background: transparent;">
+                  <thead>
+                    <tr>
+                      <th style="background: rgba(15, 23, 42, 0.03); color: var(--text-secondary);">Date</th>
+                      <th style="background: rgba(15, 23, 42, 0.03); color: var(--text-secondary);">Event Source</th>
+                      <th style="background: rgba(15, 23, 42, 0.03); color: var(--text-secondary);">Transaction Type</th>
+                      <th style="background: rgba(15, 23, 42, 0.03); color: var(--text-secondary); text-align: right;">Amount</th>
+                      <th style="background: rgba(15, 23, 42, 0.03); color: var(--text-secondary); text-align: right;">Reserve Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody id="kiosk-ledger-rows">
+                    <!-- History rows will be injected by JS -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           

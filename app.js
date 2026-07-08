@@ -593,10 +593,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- 5. Cascading Balance Computation ---
   function computeAllBalances() {
     sortEventsChronologically();
-    let carryOver = 0;
+    let kioskBalance = 0;
+    const kioskHistory = [];
 
     appState.events.forEach((evt, index) => {
-      const prevBalance = index === 0 ? evt.initialBalance : carryOver;
+      // First event uses its initialBalance, subsequent events start from 0
+      const prevBalance = index === 0 ? (evt.initialBalance || 0) : 0;
       const studentCollection = (evt.students || 0) * (evt.fee || 0);
       const membershipTotal = evt.membership || 0;
       const sanctionsTotal = evt.sanctions || 0;
@@ -625,9 +627,22 @@ document.addEventListener('DOMContentLoaded', () => {
         expenseCount: expensesList.length
       };
 
-      // Carry over the net remaining to the next event
-      carryOver = netRemaining;
+      // Kiosk Reserve calculation
+      kioskBalance += netRemaining;
+      kioskHistory.push({
+        date: evt.date,
+        event: evt.name,
+        type: netRemaining >= 0 ? 'Deposit (Leftover)' : 'Withdrawal (Shortage)',
+        amount: netRemaining,
+        balanceAfter: kioskBalance,
+        description: netRemaining >= 0 
+          ? `Transferred leftover event funds of ${evt.name} to Kiosk Reserve.`
+          : `Covered event budget shortage for ${evt.name} from Kiosk Reserve.`
+      });
     });
+
+    appState.kioskBalance = kioskBalance;
+    appState.kioskHistory = kioskHistory;
   }
 
   // --- 6. DOM Elements ---
@@ -696,6 +711,8 @@ document.addEventListener('DOMContentLoaded', () => {
     detailContent: document.getElementById('detail-content'),
     overallDashboardView: document.getElementById('overall-dashboard-view'),
     overallNetBalance: document.getElementById('overall-net-balance'),
+    overallKioskBalance: document.getElementById('overall-kiosk-balance'),
+    kioskLedgerRows: document.getElementById('kiosk-ledger-rows'),
     
     // Project Summary Card
     projectName: document.getElementById('detail-project-name'),
@@ -936,12 +953,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return matchesSearch && matchesSemester && matchesYear;
     });
     
-    // Update live overall balance badge at the top of the sidebar
-    const lastEvent = appState.events[appState.events.length - 1];
-    if (lastEvent) {
-      const bal = appState.computedBalances[lastEvent.id] || {};
-      el.navOverallBalance.textContent = `₱${formatMoney(bal.netRemaining || 0)}`;
-    }
+    // Update live overall balance badge at the top of the sidebar (shows Kiosk Reserve balance)
+    el.navOverallBalance.textContent = `₱${formatMoney(appState.kioskBalance || 0)}`;
     
     // Toggle active styling on overall nav button
     if (appState.activeEventId === 'overall') {
@@ -1038,16 +1051,55 @@ document.addEventListener('DOMContentLoaded', () => {
       el.detailContent.classList.add('hide');
       el.overallDashboardView.classList.remove('hide');
       
-      const lastEvent = appState.events[appState.events.length - 1];
-      if (lastEvent) {
-        const bal = appState.computedBalances[lastEvent.id] || {};
-        el.overallNetBalance.textContent = `₱${formatMoney(bal.netRemaining || 0)}`;
-        
-        // Dynamic color for overall remaining balance
-        if (bal.netRemaining < 0) {
-          el.overallNetBalance.classList.add('negative');
+      const activeEvents = appState.events.filter(e => e.status === 'Active');
+      const activeIITSOFunds = activeEvents.reduce((sum, e) => {
+        const bal = appState.computedBalances[e.id] || {};
+        return sum + (bal.netRemaining || 0);
+      }, 0);
+
+      el.overallNetBalance.textContent = `₱${formatMoney(activeIITSOFunds)}`;
+      if (activeIITSOFunds < 0) {
+        el.overallNetBalance.classList.add('negative');
+      } else {
+        el.overallNetBalance.classList.remove('negative');
+      }
+
+      const kioskBal = appState.kioskBalance || 0;
+      el.overallKioskBalance.textContent = `₱${formatMoney(kioskBal)}`;
+      if (kioskBal < 0) {
+        el.overallKioskBalance.classList.add('negative');
+      } else {
+        el.overallKioskBalance.classList.remove('negative');
+      }
+
+      // Render Kiosk Ledger history rows
+      if (el.kioskLedgerRows) {
+        el.kioskLedgerRows.innerHTML = '';
+        if (appState.kioskHistory && appState.kioskHistory.length > 0) {
+          appState.kioskHistory.forEach(tx => {
+            const tr = document.createElement('tr');
+            const isDeposit = tx.amount >= 0;
+            const amtColor = isDeposit ? 'var(--success)' : 'var(--danger)';
+            const amtSign = isDeposit ? '+' : '';
+            tr.innerHTML = `
+              <td>${formatDateString(tx.date)}</td>
+              <td style="font-weight: 600; color: var(--text-primary);">${escapeHTML(tx.event)}</td>
+              <td>
+                <span class="unit-badge" style="background: ${isDeposit ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)'}; color: ${amtColor}; border-color: ${isDeposit ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)'}; font-weight: 600;">
+                  ${tx.type}
+                </span>
+              </td>
+              <td class="text-right" style="font-weight: 700; color: ${amtColor};">${amtSign}₱${formatMoney(tx.amount)}</td>
+              <td class="text-right" style="font-weight: 700; color: var(--text-primary);">₱${formatMoney(tx.balanceAfter)}</td>
+            `;
+            el.kioskLedgerRows.appendChild(tr);
+          });
         } else {
-          el.overallNetBalance.classList.remove('negative');
+          el.kioskLedgerRows.innerHTML = `
+            <tr>
+              <td colspan="5" class="text-center" style="color: var(--text-muted); padding: 20px;">No Kiosk Reserve transactions recorded.</td>
+            </tr>
+          `;
         }
       }
       return;
