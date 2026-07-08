@@ -222,22 +222,17 @@
             <i class="fa-solid fa-plus"></i> New Audit Project
           </button>
 
-          <div class="sidebar-scrollable-content" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; margin-top: 8px;">
-            <div class="sidebar-section-header" style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 6px 6px 6px; display: flex; align-items: center; gap: 6px;">
-              <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Expenses & Receipts
+          <!-- Sanctions & Compliance Nav Button (Auditor only) -->
+          <button id="btn-sanctions-view" class="overall-nav-btn hide" style="margin-bottom: 8px; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06);">
+            <i class="fa-solid fa-users-gear" style="color: var(--success);"></i>
+            <div class="overall-nav-text">
+              <strong style="color: var(--success);">Sanctions & Compliance</strong>
+              <span style="color: var(--success); opacity: 0.7;">Attendance Ledger</span>
             </div>
-            <div class="event-list-container" id="event-list" style="overflow: visible; flex: none;">
-              <!-- Event cards injected here by JS -->
-            </div>
+          </button>
 
-            <div id="sidebar-sanctions-section" class="hide">
-              <div class="sidebar-section-header" style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 18px 6px 6px 6px; display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--border-glass); margin-top: 12px;">
-                <i class="fa-solid fa-users-gear" style="color: var(--success);"></i> Sanctions & Compliance
-              </div>
-              <div class="event-list-container" id="sanctions-event-list" style="overflow: visible; flex: none;">
-                <!-- Sanctions event cards injected here by JS -->
-              </div>
-            </div>
+          <div class="event-list-container" id="event-list">
+            <!-- Event cards injected here by JS -->
           </div>
         </aside>
         
@@ -441,8 +436,8 @@
               </div>
             </div>
 
-            <!-- Student Compliance & Sanctions Ledger -->
-            <div id="student-compliance-panel" class="glass-panel" style="padding: 24px; border-radius: var(--radius-md); margin-top: 20px; margin-bottom: 20px;">
+            <!-- (compliance panel removed — now a separate full-page view) -->
+            <div id="student-compliance-panel" class="hide" style="display:none;">
               <div class="column-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
                   <i class="fa-solid fa-users-gear" style="color: var(--primary);"></i> Student Compliance & Sanctions Ledger
@@ -530,6 +525,79 @@
             </div>
             
           </div>
+
+          <!-- ============================================================ -->
+          <!-- Sanctions & Compliance Full-Page View                        -->
+          <!-- ============================================================ -->
+          <div id="sanctions-view" class="sanctions-view hide">
+
+            <!-- Header -->
+            <div class="sanctions-view-header">
+              <div>
+                <h2><i class="fa-solid fa-users-gear"></i> Sanctions &amp; Compliance Ledger</h2>
+                <p>Track attendance fines per student across all events in a semester.</p>
+              </div>
+              <div class="sanctions-filter-row">
+                <div class="sanctions-filter-group">
+                  <label>School Year</label>
+                  <select id="sanctions-sy-select">
+                    <option value="">-- Select S-Y --</option>
+                  </select>
+                </div>
+                <div class="sanctions-filter-group">
+                  <label>Semester</label>
+                  <select id="sanctions-sem-select">
+                    <option value="">-- Select Semester --</option>
+                    <option value="1">1st Semester</option>
+                    <option value="2">2nd Semester</option>
+                  </select>
+                </div>
+                <button id="btn-sanctions-add-student" class="btn btn-primary btn-small" style="align-self: flex-end;">
+                  <i class="fa-solid fa-user-plus"></i> Add Student
+                </button>
+              </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="sanctions-summary-row" id="sanctions-summary-row" style="display:none;">
+              <div class="sanctions-stat-card">
+                <span class="sanctions-stat-label">Total Students</span>
+                <strong class="sanctions-stat-val" id="sanctions-stat-students">0</strong>
+              </div>
+              <div class="sanctions-stat-card">
+                <span class="sanctions-stat-label">Events in Semester</span>
+                <strong class="sanctions-stat-val" id="sanctions-stat-events">0</strong>
+              </div>
+              <div class="sanctions-stat-card" style="border-color: rgba(239,68,68,0.3);">
+                <span class="sanctions-stat-label">Total Sanctions</span>
+                <strong class="sanctions-stat-val" id="sanctions-stat-total" style="color: var(--danger);">₱0</strong>
+              </div>
+              <div class="sanctions-stat-card" style="border-color: rgba(16,185,129,0.3);">
+                <span class="sanctions-stat-label">Fully Paid</span>
+                <strong class="sanctions-stat-val" id="sanctions-stat-paid" style="color: var(--success);">0 / 0</strong>
+              </div>
+            </div>
+
+            <!-- Empty state when no SY/Sem selected -->
+            <div id="sanctions-empty-state" class="empty-state" style="margin-top: 40px;">
+              <i class="fa-solid fa-table empty-icon" style="color: var(--success);"></i>
+              <h3>Select a School Year &amp; Semester</h3>
+              <p>Choose a school year and semester from the dropdowns above to load the compliance ledger.</p>
+            </div>
+
+            <!-- The pivot table wrapper -->
+            <div id="sanctions-table-wrapper" class="sanctions-table-wrapper hide">
+              <div class="sanctions-table-scroll">
+                <table class="sanctions-pivot-table" id="sanctions-pivot-table">
+                  <thead id="sanctions-table-head"></thead>
+                  <tbody id="sanctions-table-body"></tbody>
+                  <tfoot id="sanctions-table-foot"></tfoot>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
         </section>
       </div>
       

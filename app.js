@@ -941,7 +941,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appState.activeEventId) {
       renderExpenseList();
     }
+    // Show/hide Sanctions & Compliance button based on role
+    updateSanctionsButtonVisibility();
   }
+
 
   function setInlineInputsEditable(editable) {
     const inputs = [el.inputStudents, el.inputFee, el.inputMembership, el.inputSanctions];
@@ -1150,7 +1153,14 @@ document.addEventListener('DOMContentLoaded', () => {
       dbGrid.classList.add('show-detail');
     }
     
+    // Always hide sanctions view when switching to an event or overall
+    const sv = document.getElementById('sanctions-view');
+    if (sv) sv.classList.add('hide');
+    const btnSV = document.getElementById('btn-sanctions-view');
+    if (btnSV) btnSV.classList.remove('active-sanctions');
+
     if (eventId === 'overall') {
+
       el.detailEmptyState.classList.add('hide');
       el.detailContent.classList.add('hide');
       el.overallDashboardView.classList.remove('hide');
@@ -3121,186 +3131,382 @@ function populateProjectSchoolYearSelect() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
-  // --- 16b. Student Compliance & Sanctions Ledger Logic ---
-  function renderStudentCompliance(eventId) {
-    if (!eventId || eventId === 'overall') return;
-    
-    const storageKey = `student_compliance_${eventId}`;
-    let studentsList = [];
+
+  // =====================================================================
+  // 16b. Sanctions & Compliance Ledger — Full-Page Pivot Table
+  // =====================================================================
+
+  const SANCTIONS_KEY = (sy, sem) => `sanctions_ledger_${sy}_${sem}`;
+  const ATT_VALUES = { whole: 0, half: 25, absent: 50 };
+
+  // Helper: get all unique SYs from events
+  function getSanctionsSYList() {
+    const sySet = new Set(appState.events.map(e => e.schoolYear).filter(Boolean));
+    return [...sySet].sort().reverse();
+  }
+
+  // Helper: get events for a given SY + semester
+  function getSanctionsEvents(sy, sem) {
+    return appState.events.filter(e =>
+      e.schoolYear === sy && String(e.semester) === String(sem)
+    );
+  }
+
+  // Load ledger data from localStorage
+  function loadSanctionsData(sy, sem) {
     try {
-      studentsList = JSON.parse(localStorage.getItem(storageKey)) || [];
-    } catch (e) {
-      studentsList = [];
-    }
-    
-    const container = document.getElementById('student-compliance-rows');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
-    
-    if (studentsList.length === 0) {
-      container.innerHTML = `
-        <tr>
-          <td colspan="8" class="text-center" style="color: var(--text-muted); padding: 30px; font-weight: 500;">
-            No students registered in compliance ledger for this event. Click 'Add Student' or 'Populate Default Roster' to start.
-          </td>
-        </tr>
-      `;
-      updateComplianceSummaries(studentsList);
+      return JSON.parse(localStorage.getItem(SANCTIONS_KEY(sy, sem))) || [];
+    } catch { return []; }
+  }
+
+  // Save ledger data
+  function saveSanctionsData(sy, sem, rows) {
+    localStorage.setItem(SANCTIONS_KEY(sy, sem), JSON.stringify(rows));
+  }
+
+  // Select / show the sanctions view (hide all other panels)
+  function selectSanctionsView() {
+    // Hide all other panels
+    if (el.detailContent)          el.detailContent.classList.add('hide');
+    if (el.detailEmptyState)       el.detailEmptyState.classList.add('hide');
+    const overallView = document.getElementById('overall-dashboard-view');
+    if (overallView)               overallView.classList.add('hide');
+
+    const sv = document.getElementById('sanctions-view');
+    if (sv) sv.classList.remove('hide');
+
+    // Mark sidebar button active
+    const btnSV = document.getElementById('btn-sanctions-view');
+    if (btnSV) btnSV.classList.add('active-sanctions');
+    if (el.btnOverallDashboard) el.btnOverallDashboard.classList.remove('active');
+
+    // Deselect any active event card
+    document.querySelectorAll('.event-card.active').forEach(c => c.classList.remove('active'));
+    appState.activeEventId = null;
+
+    // Populate SY dropdown from events
+    populateSanctionsSYDropdown();
+  }
+
+  // Populate the SY select options
+  function populateSanctionsSYDropdown() {
+    const sel = document.getElementById('sanctions-sy-select');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">-- Select S-Y --</option>';
+    getSanctionsSYList().forEach(sy => {
+      const opt = document.createElement('option');
+      opt.value = sy;
+      opt.textContent = `S-Y ${sy}`;
+      sel.appendChild(opt);
+    });
+    if (current && getSanctionsSYList().includes(current)) sel.value = current;
+  }
+
+  // Main render: build the pivot table
+  function renderSanctionsTable() {
+    const sy  = (document.getElementById('sanctions-sy-select')  || {}).value || '';
+    const sem = (document.getElementById('sanctions-sem-select') || {}).value || '';
+
+    const emptyState    = document.getElementById('sanctions-empty-state');
+    const tableWrapper  = document.getElementById('sanctions-table-wrapper');
+    const summaryRow    = document.getElementById('sanctions-summary-row');
+    const thead         = document.getElementById('sanctions-table-head');
+    const tbody         = document.getElementById('sanctions-table-body');
+    const tfoot         = document.getElementById('sanctions-table-foot');
+
+    if (!sy || !sem) {
+      if (emptyState)   emptyState.style.display = '';
+      if (tableWrapper) tableWrapper.classList.add('hide');
+      if (summaryRow)   summaryRow.style.display = 'none';
       return;
     }
-    
-    studentsList.forEach((stud, idx) => {
+
+    if (emptyState)   emptyState.style.display = 'none';
+    if (tableWrapper) tableWrapper.classList.remove('hide');
+    if (summaryRow)   summaryRow.style.display = '';
+
+    const events  = getSanctionsEvents(sy, sem);
+    let   rows    = loadSanctionsData(sy, sem);
+
+    // ---- Build HEADER ----
+    thead.innerHTML = '';
+
+    // Row 1: FULL NAME | colspan=events EVENTS | TOTAL | PAID | (del)
+    const tr1 = document.createElement('tr');
+    const thName = document.createElement('th');
+    thName.className = 'col-name';
+    thName.rowSpan = 2;
+    thName.textContent = 'FULL NAME';
+    tr1.appendChild(thName);
+
+    if (events.length > 0) {
+      const thEvtGroup = document.createElement('th');
+      thEvtGroup.className = 'col-events-group';
+      thEvtGroup.colSpan = events.length;
+      thEvtGroup.textContent = 'EVENTS';
+      tr1.appendChild(thEvtGroup);
+    }
+
+    const thTotal = document.createElement('th');
+    thTotal.className = 'col-total';
+    thTotal.rowSpan = 2;
+    thTotal.textContent = 'TOTAL';
+    tr1.appendChild(thTotal);
+
+    const thPaid = document.createElement('th');
+    thPaid.className = 'col-paid';
+    thPaid.rowSpan = 2;
+    thPaid.textContent = 'PAID';
+    tr1.appendChild(thPaid);
+
+    const thDel = document.createElement('th');
+    thDel.rowSpan = 2;
+    thDel.textContent = '';
+    tr1.appendChild(thDel);
+
+    thead.appendChild(tr1);
+
+    // Row 2: individual event names
+    const tr2 = document.createElement('tr');
+    events.forEach(evt => {
+      const th = document.createElement('th');
+      th.className = 'col-event';
+      th.textContent = evt.name;
+      tr2.appendChild(th);
+    });
+    thead.appendChild(tr2);
+
+    // ---- Build BODY ----
+    tbody.innerHTML = '';
+
+    const isAuditor = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+
+    function calcRowTotal(row) {
+      return events.reduce((sum, evt) => {
+        const status = (row.attendance || {})[evt.id] || 'whole';
+        return sum + ATT_VALUES[status];
+      }, 0);
+    }
+
+    function rerender() {
+      saveSanctionsData(sy, sem, rows);
+      renderSanctionsTable();
+    }
+
+    rows.forEach((row, rIdx) => {
       const tr = document.createElement('tr');
-      
-      tr.innerHTML = `
-        <td>
-          <input type="text" class="table-input stud-name-input" value="${escapeAttr(stud.name)}" ${!hasWriteAccess ? 'readonly' : ''} style="font-weight: 600;"/>
-        </td>
-        <td class="text-right">
-          <input type="number" class="table-input text-right stud-contrib-input" min="0" step="any" value="${stud.contribution || 0}" ${!hasWriteAccess ? 'readonly' : ''}/>
-        </td>
-        <td class="text-center">
-          <input type="checkbox" class="stud-contrib-paid" ${stud.contribPaid ? 'checked' : ''} ${!hasWriteAccess ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer;"/>
-        </td>
-        <td class="text-center">
-          <input type="checkbox" class="stud-present" ${stud.present ? 'checked' : ''} ${!hasWriteAccess ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer;"/>
-        </td>
-        <td class="text-center">
-          <input type="checkbox" class="stud-membership" ${stud.membershipPaid ? 'checked' : ''} ${!hasWriteAccess ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer;"/>
-        </td>
-        <td class="text-right">
-          <input type="number" class="table-input text-right stud-sanction-input" min="0" step="any" value="${stud.sanction || 0}" ${!hasWriteAccess ? 'readonly' : ''}/>
-        </td>
-        <td class="text-center">
-          <input type="checkbox" class="stud-sanction-paid" ${stud.sanctionPaid ? 'checked' : ''} ${!hasWriteAccess ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer;"/>
-        </td>
-        <td class="text-center">
-          ${hasWriteAccess ? `
-            <button class="btn btn-icon btn-small text-danger btn-delete-student" title="Delete Student" style="padding: 2px; border:none; background:none; cursor:pointer;">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
-          ` : ''}
-        </td>
-      `;
-      
-      if (hasWriteAccess) {
-        tr.querySelector('.stud-name-input').addEventListener('change', (e) => {
-          studentsList[idx].name = e.target.value.trim();
-          saveAndRefreshCompliance(eventId, studentsList);
+
+      // Name cell
+      const tdName = document.createElement('td');
+      tdName.className = 'cell-name';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'sanctions-name-input';
+      nameInput.value = row.name || '';
+      nameInput.placeholder = 'Student Name';
+      if (isAuditor) {
+        nameInput.addEventListener('change', e => {
+          rows[rIdx].name = e.target.value.trim();
+          saveSanctionsData(sy, sem, rows);
         });
-        tr.querySelector('.stud-contrib-input').addEventListener('change', (e) => {
-          studentsList[idx].contribution = parseFloat(e.target.value) || 0;
-          saveAndRefreshCompliance(eventId, studentsList);
-        });
-        tr.querySelector('.stud-contrib-paid').addEventListener('change', (e) => {
-          studentsList[idx].contribPaid = e.target.checked;
-          saveAndRefreshCompliance(eventId, studentsList);
-        });
-        tr.querySelector('.stud-present').addEventListener('change', (e) => {
-          studentsList[idx].present = e.target.checked;
-          saveAndRefreshCompliance(eventId, studentsList);
-        });
-        tr.querySelector('.stud-membership').addEventListener('change', (e) => {
-          studentsList[idx].membershipPaid = e.target.checked;
-          saveAndRefreshCompliance(eventId, studentsList);
-        });
-        tr.querySelector('.stud-sanction-input').addEventListener('change', (e) => {
-          studentsList[idx].sanction = parseFloat(e.target.value) || 0;
-          saveAndRefreshCompliance(eventId, studentsList);
-        });
-        tr.querySelector('.stud-sanction-paid').addEventListener('change', (e) => {
-          studentsList[idx].sanctionPaid = e.target.checked;
-          saveAndRefreshCompliance(eventId, studentsList);
-        });
-        tr.querySelector('.btn-delete-student').addEventListener('click', () => {
-          studentsList.splice(idx, 1);
-          saveAndRefreshCompliance(eventId, studentsList);
-        });
+      } else {
+        nameInput.readOnly = true;
       }
-      
-      container.appendChild(tr);
-    });
-    
-    updateComplianceSummaries(studentsList);
-  }
+      tdName.appendChild(nameInput);
+      tr.appendChild(tdName);
 
-  function saveAndRefreshCompliance(eventId, studentsList) {
-    localStorage.setItem(`student_compliance_${eventId}`, JSON.stringify(studentsList));
-    renderStudentCompliance(eventId);
-  }
+      // One cell per event (attendance dropdown → shows amount)
+      events.forEach(evt => {
+        const tdAtt = document.createElement('td');
+        tdAtt.className = 'cell-att';
+        if (!row.attendance) row.attendance = {};
+        const currentStatus = row.attendance[evt.id] || 'whole';
+        const amount = ATT_VALUES[currentStatus];
 
-  function updateComplianceSummaries(studentsList) {
-    const totalContrib = studentsList.reduce((sum, s) => sum + (s.contribPaid ? (s.contribution || 0) : 0), 0);
-    const totalMember = studentsList.reduce((sum, s) => sum + (s.membershipPaid ? 150 : 0), 0);
-    const totalSanct = studentsList.reduce((sum, s) => sum + (s.sanctionPaid ? (s.sanction || 0) : 0), 0);
-    const presentCount = studentsList.filter(s => s.present).length;
-    const rate = studentsList.length > 0 ? Math.round((presentCount / studentsList.length) * 100) : 0;
-    
-    const elContrib = document.getElementById('compliance-total-contributions');
-    const elMember = document.getElementById('compliance-total-membership');
-    const elSanct = document.getElementById('compliance-total-sanctions');
-    const elRate = document.getElementById('compliance-attendance-rate');
-
-    if (elContrib) elContrib.textContent = `₱${formatMoney(totalContrib)}`;
-    if (elMember) elMember.textContent = `₱${formatMoney(totalMember)}`;
-    if (elSanct) elSanct.textContent = `₱${formatMoney(totalSanct)}`;
-    if (elRate) elRate.textContent = `${rate}%`;
-  }
-
-  function populateDefaultRoster(eventId) {
-    const event = appState.events.find(e => e.id === eventId);
-    const defaultContrib = event ? (event.fee || 50) : 50;
-    const defaultRoster = [
-      { name: 'John Doe', contribution: defaultContrib, contribPaid: true, present: true, membershipPaid: true, sanction: 0, sanctionPaid: false },
-      { name: 'Jane Smith', contribution: defaultContrib, contribPaid: true, present: true, membershipPaid: false, sanction: 0, sanctionPaid: false },
-      { name: 'Michael Johnson', contribution: defaultContrib, contribPaid: false, present: false, membershipPaid: true, sanction: 100, sanctionPaid: true },
-      { name: 'Emily Davis', contribution: defaultContrib, contribPaid: true, present: true, membershipPaid: true, sanction: 0, sanctionPaid: false },
-      { name: 'Sarah Wilson', contribution: defaultContrib, contribPaid: false, present: false, membershipPaid: false, sanction: 100, sanctionPaid: false }
-    ];
-    saveAndRefreshCompliance(eventId, defaultRoster);
-  }
-
-  // Wire Compliance Quick Action Buttons
-  const btnPopulate = document.getElementById('btn-populate-students');
-  if (btnPopulate) {
-    btnPopulate.addEventListener('click', () => {
-      const activeEvtId = appState.activeEventId;
-      if (activeEvtId) populateDefaultRoster(activeEvtId);
-    });
-  }
-
-  const btnAddRow = document.getElementById('btn-add-student-row');
-  if (btnAddRow) {
-    btnAddRow.addEventListener('click', () => {
-      const activeEvtId = appState.activeEventId;
-      if (activeEvtId) {
-        const storageKey = `student_compliance_${activeEvtId}`;
-        let currentList = [];
-        try {
-          currentList = JSON.parse(localStorage.getItem(storageKey)) || [];
-        } catch (e) {
-          currentList = [];
+        if (isAuditor) {
+          // Dropdown showing status
+          const sel = document.createElement('select');
+          sel.className = `sanctions-att-select att-${currentStatus}`;
+          sel.title = `Attendance for ${evt.name}`;
+          [
+            { value: 'whole',  label: '₱0 — Whole Day' },
+            { value: 'half',   label: '₱25 — Half Day' },
+            { value: 'absent', label: '₱50 — Absent'   }
+          ].forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.label;
+            if (opt.value === currentStatus) o.selected = true;
+            sel.appendChild(o);
+          });
+          sel.addEventListener('change', e => {
+            rows[rIdx].attendance[evt.id] = e.target.value;
+            saveSanctionsData(sy, sem, rows);
+            // Update total cell without full re-render
+            const newTotal = calcRowTotal(rows[rIdx]);
+            const totalCell = tr.querySelector('.cell-total');
+            if (totalCell) totalCell.textContent = `₱${newTotal}`;
+            // Update footer
+            renderSanctionsFoot(tfoot, events, rows);
+            updateSanctionsSummary(events, rows);
+            // Re-colour the select
+            e.target.className = `sanctions-att-select att-${e.target.value}`;
+          });
+          tdAtt.appendChild(sel);
+        } else {
+          // Read-only: just show the amount
+          const amtCls = amount === 0 ? 'amt-zero' : amount === 25 ? 'amt-half' : 'amt-absent';
+          tdAtt.innerHTML = `<span class="att-amount ${amtCls}">₱${amount}</span>`;
         }
-        const event = appState.events.find(e => e.id === activeEvtId);
-        const defaultContrib = event ? (event.fee || 50) : 50;
-        currentList.push({
-          name: 'New Student',
-          contribution: defaultContrib,
-          contribPaid: false,
-          present: true,
-          membershipPaid: false,
-          sanction: 0,
-          sanctionPaid: false
+
+        tr.appendChild(tdAtt);
+      });
+
+      // TOTAL cell
+      const tdTotal = document.createElement('td');
+      tdTotal.className = 'cell-total';
+      tdTotal.textContent = `₱${calcRowTotal(row)}`;
+      tr.appendChild(tdTotal);
+
+      // PAID checkbox (sanction paid)
+      const tdPaid = document.createElement('td');
+      tdPaid.className = 'cell-paid';
+      const chkPaid = document.createElement('input');
+      chkPaid.type = 'checkbox';
+      chkPaid.className = 'sanctions-paid-check';
+      chkPaid.checked = !!row.paid;
+      if (!isAuditor) chkPaid.disabled = true;
+      chkPaid.addEventListener('change', e => {
+        rows[rIdx].paid = e.target.checked;
+        saveSanctionsData(sy, sem, rows);
+        updateSanctionsSummary(events, rows);
+      });
+      tdPaid.appendChild(chkPaid);
+      tr.appendChild(tdPaid);
+
+      // Delete button
+      const tdDel = document.createElement('td');
+      if (isAuditor) {
+        const btnDel = document.createElement('button');
+        btnDel.className = 'btn-sanctions-del';
+        btnDel.title = 'Remove student';
+        btnDel.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+        btnDel.addEventListener('click', () => {
+          rows.splice(rIdx, 1);
+          rerender();
         });
-        saveAndRefreshCompliance(activeEvtId, currentList);
+        tdDel.appendChild(btnDel);
       }
+      tr.appendChild(tdDel);
+
+      tbody.appendChild(tr);
+    });
+
+    // Empty message
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="${events.length + 4}" style="text-align:center;padding:32px;color:var(--text-muted);font-weight:500;">No students yet. Click <strong>Add Student</strong> to get started.</td></tr>`;
+    }
+
+    // ---- FOOTER (column totals) ----
+    renderSanctionsFoot(tfoot, events, rows);
+
+    // ---- SUMMARY CARDS ----
+    updateSanctionsSummary(events, rows);
+  }
+
+  // Render the footer totals row
+  function renderSanctionsFoot(tfoot, events, rows) {
+    tfoot.innerHTML = '';
+    const tr = document.createElement('tr');
+
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'foot-name';
+    tdLabel.textContent = 'COLUMN TOTALS';
+    tr.appendChild(tdLabel);
+
+    events.forEach(evt => {
+      const colSum = rows.reduce((sum, row) => {
+        const status = (row.attendance || {})[evt.id] || 'whole';
+        return sum + ATT_VALUES[status];
+      }, 0);
+      const td = document.createElement('td');
+      td.textContent = `₱${colSum}`;
+      tr.appendChild(td);
+    });
+
+    const grandTotal = rows.reduce((sum, row) => {
+      return sum + events.reduce((s, evt) => {
+        const status = (row.attendance || {})[evt.id] || 'whole';
+        return s + ATT_VALUES[status];
+      }, 0);
+    }, 0);
+    const tdGrand = document.createElement('td');
+    tdGrand.textContent = `₱${grandTotal}`;
+    tr.appendChild(tdGrand);
+
+    const tdPaid = document.createElement('td'); tdPaid.textContent = '';
+    tr.appendChild(tdPaid);
+    const tdDel = document.createElement('td'); tdDel.textContent = '';
+    tr.appendChild(tdDel);
+
+    tfoot.appendChild(tr);
+  }
+
+  // Update summary stat cards
+  function updateSanctionsSummary(events, rows) {
+    const totalStudents = rows.length;
+    const totalEvents   = events.length;
+    const totalAmount   = rows.reduce((sum, row) => {
+      return sum + events.reduce((s, evt) => {
+        const status = (row.attendance || {})[evt.id] || 'whole';
+        return s + ATT_VALUES[status];
+      }, 0);
+    }, 0);
+    const paidCount = rows.filter(r => r.paid).length;
+
+    const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    s('sanctions-stat-students', totalStudents);
+    s('sanctions-stat-events',   totalEvents);
+    s('sanctions-stat-total',    `₱${totalAmount}`);
+    s('sanctions-stat-paid',     `${paidCount} / ${totalStudents}`);
+  }
+
+  // Wire sidebar Sanctions button
+  const btnSanctionsView = document.getElementById('btn-sanctions-view');
+  if (btnSanctionsView) {
+    btnSanctionsView.addEventListener('click', selectSanctionsView);
+  }
+
+  // Wire SY / Semester dropdowns
+  const sySel  = document.getElementById('sanctions-sy-select');
+  const semSel = document.getElementById('sanctions-sem-select');
+  if (sySel)  sySel.addEventListener('change',  renderSanctionsTable);
+  if (semSel) semSel.addEventListener('change', renderSanctionsTable);
+
+  // Wire Add Student button
+  const btnAddSanctionStudent = document.getElementById('btn-sanctions-add-student');
+  if (btnAddSanctionStudent) {
+    btnAddSanctionStudent.addEventListener('click', () => {
+      const sy  = (document.getElementById('sanctions-sy-select')  || {}).value || '';
+      const sem = (document.getElementById('sanctions-sem-select') || {}).value || '';
+      if (!sy || !sem) { alert('Please select a School Year and Semester first.'); return; }
+      const rows = loadSanctionsData(sy, sem);
+      rows.push({ name: 'New Student', attendance: {}, paid: false });
+      saveSanctionsData(sy, sem, rows);
+      renderSanctionsTable();
     });
   }
 
-  // --- 17. Application Initialization Bootloader ---
+  // Show sanctions button only for auditors
+  function updateSanctionsButtonVisibility() {
+    const btn = document.getElementById('btn-sanctions-view');
+    if (!btn) return;
+    const isAuditor = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+    if (isAuditor) btn.classList.remove('hide');
+    else           btn.classList.add('hide');
+  }
+
   initDatabase().then(() => {
     checkExistingSession();
     

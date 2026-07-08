@@ -2632,3 +2632,315 @@ input:focus, select:focus, textarea:focus {
 .sy-group-container.collapsed .sy-group-header .chevron-icon {
   transform: rotate(-90deg);
 }
+
+/* ===== SANCTIONS & COMPLIANCE LEDGER VIEW ===== */
+.sanctions-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sanctions-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.sanctions-view-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 4px 0;
+}
+
+.sanctions-view-header h2 i { color: var(--success); }
+.sanctions-view-header p { font-size: 0.82rem; color: var(--text-muted); margin: 0; }
+
+.sanctions-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sanctions-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sanctions-filter-group label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sanctions-filter-group select {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+  background: rgba(15,23,42,0.7);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: var(--font-primary);
+  min-width: 150px;
+}
+
+/* Summary stat cards */
+.sanctions-summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.sanctions-stat-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.sanctions-stat-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sanctions-stat-val {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+}
+
+/* Table wrapper */
+.sanctions-table-wrapper {
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.03);
+}
+
+.sanctions-table-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 360px);
+  min-height: 200px;
+}
+
+/* The pivot table */
+.sanctions-pivot-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.83rem;
+  font-family: var(--font-primary);
+}
+
+/* Sticky header */
+.sanctions-pivot-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #1e293b;
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 10px 12px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* FULL NAME header = orange like Excel */
+.sanctions-pivot-table thead th.col-name {
+  background: #c45000;
+  min-width: 180px;
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 30;
+}
+
+/* EVENTS group header = burnt orange */
+.sanctions-pivot-table thead th.col-events-group {
+  background: #e05a00;
+}
+
+/* Individual event col header */
+.sanctions-pivot-table thead th.col-event {
+  background: #c45000;
+  min-width: 90px;
+}
+
+/* TOTAL header = teal/blue */
+.sanctions-pivot-table thead th.col-total {
+  background: #0d6efd;
+  min-width: 80px;
+}
+
+/* PAID header = dark */
+.sanctions-pivot-table thead th.col-paid {
+  background: #1e293b;
+  min-width: 60px;
+}
+
+/* Body cells */
+.sanctions-pivot-table tbody td {
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 6px 10px;
+  vertical-align: middle;
+  text-align: center;
+  color: var(--text-primary);
+  background: rgba(15,23,42,0.5);
+}
+
+.sanctions-pivot-table tbody td.cell-name {
+  text-align: left;
+  font-weight: 700;
+  color: var(--text-primary);
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: rgba(30,41,59,0.95);
+  min-width: 180px;
+}
+
+/* Attendance amount cell */
+.sanctions-pivot-table tbody td.cell-att {
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+.sanctions-att-select {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-family: var(--font-primary);
+  text-align: center;
+  padding: 8px 4px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.sanctions-att-select:focus { background: rgba(249,115,22,0.08); }
+
+/* Colour-coded attendance values */
+.sanctions-att-select.att-whole { color: #10b981; }
+.sanctions-att-select.att-half  { color: #f59e0b; }
+.sanctions-att-select.att-absent { color: #ef4444; }
+
+/* Displayed amount badge */
+.att-amount {
+  display: block;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 2px 0;
+}
+.att-amount.amt-zero   { color: #10b981; }
+.att-amount.amt-half   { color: #f59e0b; }
+.att-amount.amt-absent { color: #ef4444; }
+
+/* TOTAL cell */
+.sanctions-pivot-table tbody td.cell-total {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #60a5fa;
+  background: rgba(13,110,253,0.12);
+}
+
+/* PAID checkbox cell */
+.sanctions-pivot-table tbody td.cell-paid {
+  background: rgba(30,41,59,0.8);
+}
+
+.sanctions-paid-check {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--success);
+}
+
+/* Delete btn */
+.btn-sanctions-del {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+.btn-sanctions-del:hover { background: rgba(239,68,68,0.12); }
+
+/* Name input */
+.sanctions-name-input {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-family: var(--font-primary);
+  font-size: 0.83rem;
+  width: 100%;
+  padding: 4px 0;
+  outline: none;
+}
+.sanctions-name-input:focus {
+  border-bottom: 1px solid var(--primary);
+}
+
+/* Footer totals row */
+.sanctions-pivot-table tfoot td {
+  background: rgba(13,110,253,0.18);
+  color: #60a5fa;
+  font-weight: 800;
+  font-size: 0.9rem;
+  border: 1px solid rgba(96,165,250,0.2);
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.sanctions-pivot-table tfoot td.foot-name {
+  text-align: left;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  left: 0;
+  background: rgba(30,41,59,0.98);
+}
+
+/* btn-sanctions-view active state */
+#btn-sanctions-view.active-sanctions {
+  border-color: rgba(16,185,129,0.6);
+  background: rgba(16,185,129,0.14);
+  box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+}
+
