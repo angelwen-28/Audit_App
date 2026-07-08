@@ -3876,7 +3876,7 @@ function populateProjectSchoolYearSelect() {
           alert('Failed to parse file: ' + error.message);
         }
         excelInput.value = '';
-      });
+      };
 
       if (ext === 'csv') {
         reader.readAsText(file);
