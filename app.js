@@ -948,8 +948,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateSanctionsButtonVisibility() {
     const btn = document.getElementById('btn-sanctions-view');
     if (!btn) return;
-    const ok = appState.currentUser &&
-      (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+    // Show button to any logged-in user (Auditor, Secretary, or Student)
+    const ok = !!appState.currentUser;
     btn.classList.toggle('hide', !ok);
   }
 
@@ -3268,6 +3268,32 @@ function populateProjectSchoolYearSelect() {
     appState.activeEventId = null;
 
     populateSanctionsSYDropdown();
+
+    // Toggle header action buttons based on Auditor/Secretary role vs Student role
+    const hasWrite = appState.currentUser && 
+      (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+      
+    const addEv = document.getElementById('btn-sanctions-add-event');
+    const addSt = document.getElementById('btn-sanctions-add-student');
+    const impEx = document.getElementById('btn-sanctions-import-excel');
+    const manSy = document.getElementById('sanctions-sy-manual');
+    const manSc = document.getElementById('sanctions-section-manual');
+    
+    if (addEv) addEv.classList.toggle('hide', !hasWrite);
+    if (addSt) addSt.classList.toggle('hide', !hasWrite);
+    if (impEx) impEx.classList.toggle('hide', !hasWrite);
+    if (manSy) {
+      manSy.classList.toggle('hide', !hasWrite);
+      // Also hide its label
+      const lbl = manSy.previousElementSibling;
+      if (lbl) lbl.classList.toggle('hide', !hasWrite);
+    }
+    if (manSc) {
+      manSc.classList.toggle('hide', !hasWrite);
+      // Also hide its label
+      const lbl = manSc.previousElementSibling;
+      if (lbl) lbl.classList.toggle('hide', !hasWrite);
+    }
   }
 
   // ---- Main render ----
