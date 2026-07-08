@@ -2822,7 +2822,7 @@ input:focus, select:focus, textarea:focus {
   left: 0;
   z-index: 10;
   background: #ffffff !important;
-  min-width: 180px;
+  min-width: 260px;
 }
 .sanctions-pivot-table tbody td.cell-name span {
   color: #64748b !important;
