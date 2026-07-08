@@ -3618,6 +3618,32 @@ function populateProjectSchoolYearSelect() {
     syManual.addEventListener('blur', applyManualSY);
   }
 
+  // ---- Wire manual Section input ----
+  const secManual = document.getElementById('sanctions-section-manual');
+  if (secManual) {
+    const applyManualSection = () => {
+      const v = secManual.value.trim().toUpperCase();
+      if (!v) return;
+      const sel = document.getElementById('sanctions-section-select');
+      if (sel) {
+        let found = false;
+        for (const opt of sel.options) {
+          if (opt.value.toUpperCase() === v) { found = true; break; }
+        }
+        if (!found) {
+          const opt = document.createElement('option');
+          opt.value = v;
+          opt.textContent = `Section ${v}`;
+          sel.appendChild(opt);
+        }
+        sel.value = v;
+        renderSanctionsTable();
+      }
+    };
+    secManual.addEventListener('keydown', e => { if (e.key === 'Enter') applyManualSection(); });
+    secManual.addEventListener('blur', applyManualSection);
+  }
+
   // ---- Wire Add Event button ----
   const btnAddEvt = document.getElementById('btn-sanctions-add-event');
   if (btnAddEvt) {
