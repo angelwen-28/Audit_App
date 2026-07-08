@@ -3719,6 +3719,26 @@ function populateProjectSchoolYearSelect() {
         paid: false
       });
       saveLedger(sy, sem, ledger);
+
+      // Switch dropdown filters to show the newly manually added group
+      const yrSelect = document.getElementById('sanctions-year-level-select');
+      if (yrSelect) yrSelect.value = year;
+      
+      const secSelect = document.getElementById('sanctions-section-select');
+      if (secSelect) {
+        let found = false;
+        for (const opt of secSelect.options) {
+          if (opt.value.toUpperCase() === section) { found = true; break; }
+        }
+        if (!found) {
+          const opt = document.createElement('option');
+          opt.value = section;
+          opt.textContent = `Section ${section}`;
+          secSelect.appendChild(opt);
+        }
+        secSelect.value = section;
+      }
+
       renderSanctionsTable();
 
       sancModal.classList.remove('active-view');
