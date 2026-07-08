@@ -2774,7 +2774,7 @@ input:focus, select:focus, textarea:focus {
 /* FULL NAME header = orange like Excel */
 .sanctions-pivot-table thead th.col-name {
   background: #c45000;
-  min-width: 180px;
+  min-width: 260px;
   text-align: left;
   position: sticky;
   left: 0;
