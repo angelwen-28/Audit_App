@@ -3726,16 +3726,60 @@ function populateProjectSchoolYearSelect() {
   }
 
   // ---- Wire Excel/CSV Import ----
+  const btnImportExcel = document.getElementById('btn-sanctions-import-excel');
+  const excelModal = document.getElementById('sanctions-excel-modal');
+  const excelForm = document.getElementById('sanctions-excel-form');
+  const btnCloseExcelModal = document.getElementById('btn-close-excel-modal');
   const excelInput = document.getElementById('sanctions-excel-file');
+
+  let importTargetYear = '1st Year';
+  let importTargetSection = 'A';
+
+  if (btnImportExcel && excelModal) {
+    btnImportExcel.addEventListener('click', () => {
+      const sy = getSY(); const sem = getSem();
+      if (!sy || !sem) { alert('Please select a School Year and Semester first.'); return; }
+
+      const yearFilter = getYearLevelFilter();
+      const sectionFilter = getSectionFilter();
+
+      // Pre-fill target values from current view filter state
+      const yearSelect = document.getElementById('sanc-excel-modal-year');
+      if (yearSelect) {
+        yearSelect.value = yearFilter === 'all' ? '1st Year' : yearFilter;
+      }
+      const sectionInput = document.getElementById('sanc-excel-modal-section');
+      if (sectionInput) {
+        sectionInput.value = sectionFilter === 'all' ? '' : sectionFilter;
+      }
+
+      excelModal.classList.add('active-view');
+    });
+  }
+
+  if (btnCloseExcelModal && excelModal) {
+    btnCloseExcelModal.addEventListener('click', () => {
+      excelModal.classList.remove('active-view');
+    });
+  }
+
+  if (excelForm && excelModal && excelInput) {
+    excelForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      importTargetYear = document.getElementById('sanc-excel-modal-year').value;
+      importTargetSection = document.getElementById('sanc-excel-modal-section').value.trim().toUpperCase();
+
+      if (!importTargetYear || !importTargetSection) return;
+
+      excelModal.classList.remove('active-view');
+      // Trigger file selector
+      excelInput.click();
+    });
+  }
+
   if (excelInput) {
     excelInput.addEventListener('change', (e) => {
       const sy = getSY(); const sem = getSem();
-      if (!sy || !sem) {
-        alert('Please select a School Year and Semester first.');
-        excelInput.value = '';
-        return;
-      }
-
       const file = e.target.files[0];
       if (!file) return;
 
@@ -3761,46 +3805,58 @@ function populateProjectSchoolYearSelect() {
           if (importedStudents.length === 0) {
             alert('No student names found in spreadsheet. Check header titles.');
           } else {
-            const yearFilter = getYearLevelFilter();
-            const sectionFilter = getSectionFilter();
-
             const ledger = loadLedger(sy, sem);
             const existingNames = new Set(ledger.students.map(s => s.name.toLowerCase()));
             let addedCount = 0;
-            let skippedCount = 0;
 
             importedStudents.forEach(stu => {
-              // Only filter if the screen dropdowns are set to a specific value
-              const matchYear = yearFilter === 'all' || stu.yearLevel === yearFilter;
-              const matchSec = sectionFilter === 'all' || stu.section.toUpperCase().trim() === sectionFilter.toUpperCase().trim();
-
-              if (matchYear && matchSec) {
-                if (!existingNames.has(stu.name.toLowerCase())) {
-                  ledger.students.push({
-                    id: uid(),
-                    name: stu.name,
-                    yearLevel: stu.yearLevel || '1st Year',
-                    section: stu.section || 'A',
-                    attendance: {},
-                    paid: false
-                  });
-                  addedCount++;
-                }
-              } else {
-                skippedCount++;
+              // Apply the user-specified year and section to all imported rows
+              const targetName = stu.name;
+              
+              if (!existingNames.has(targetName.toLowerCase())) {
+                ledger.students.push({
+                  id: uid(),
+                  name: targetName,
+                  yearLevel: importTargetYear,
+                  section: importTargetSection,
+                  attendance: {},
+                  paid: false
+                });
+                addedCount++;
               }
             });
 
             saveLedger(sy, sem, ledger);
+            
+            // Switch dropdown filters to show the newly imported group
+            const yrSelect = document.getElementById('sanctions-year-level-select');
+            if (yrSelect) yrSelect.value = importTargetYear;
+            
+            const secSelect = document.getElementById('sanctions-section-select');
+            if (secSelect) {
+              // Ensure section exists in dropdown
+              let found = false;
+              for (const opt of secSelect.options) {
+                if (opt.value.toUpperCase() === importTargetSection) { found = true; break; }
+              }
+              if (!found) {
+                const opt = document.createElement('option');
+                opt.value = importTargetSection;
+                opt.textContent = `Section ${importTargetSection}`;
+                secSelect.appendChild(opt);
+              }
+              secSelect.value = importTargetSection;
+            }
+
             renderSanctionsTable();
-            alert(`Import complete!\n- Added ${addedCount} student(s) to ledger.\n- Skipped ${skippedCount} student(s) due to active filters.`);
+            alert(`Import complete!\nSuccessfully added ${addedCount} student(s) into ${importTargetYear} - Section ${importTargetSection}.`);
           }
         } catch (error) {
           console.error(error);
-          alert('Failed to parse file: ' + error.message + '\nVerify that the file is a valid Excel/CSV spreadsheet.');
+          alert('Failed to parse file: ' + error.message);
         }
         excelInput.value = '';
-      };
+      });
 
       if (ext === 'csv') {
         reader.readAsText(file);
