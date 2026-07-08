@@ -2817,13 +2817,17 @@ input:focus, select:focus, textarea:focus {
 .sanctions-pivot-table tbody td.cell-name {
   text-align: left;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #1e293b !important;
   position: sticky;
   left: 0;
   z-index: 10;
-  background: rgba(30,41,59,0.95);
+  background: #ffffff !important;
   min-width: 180px;
 }
+.sanctions-pivot-table tbody td.cell-name span {
+  color: #64748b !important;
+}
+
 
 /* Attendance amount cell */
 .sanctions-pivot-table tbody td.cell-att {
@@ -2903,7 +2907,7 @@ input:focus, select:focus, textarea:focus {
 .sanctions-name-input {
   background: none;
   border: none;
-  color: var(--text-primary);
+  color: #1e293b !important;
   font-weight: 700;
   font-family: var(--font-primary);
   font-size: 0.83rem;
