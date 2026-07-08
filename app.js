@@ -3688,13 +3688,13 @@ function populateProjectSchoolYearSelect() {
         sectionInput.value = sectionFilter === 'all' ? '' : sectionFilter;
       }
 
-      sancModal.classList.add('active-view');
+      sancModal.classList.add('active-modal');
     });
   }
 
   if (btnCloseSancModal && sancModal) {
     btnCloseSancModal.addEventListener('click', () => {
-      sancModal.classList.remove('active-view');
+      sancModal.classList.remove('active-modal');
     });
   }
 
@@ -3741,7 +3741,7 @@ function populateProjectSchoolYearSelect() {
 
       renderSanctionsTable();
 
-      sancModal.classList.remove('active-view');
+      sancModal.classList.remove('active-modal');
     });
   }
 
@@ -3773,13 +3773,13 @@ function populateProjectSchoolYearSelect() {
         sectionInput.value = sectionFilter === 'all' ? '' : sectionFilter;
       }
 
-      excelModal.classList.add('active-view');
+      excelModal.classList.add('active-modal');
     });
   }
 
   if (btnCloseExcelModal && excelModal) {
     btnCloseExcelModal.addEventListener('click', () => {
-      excelModal.classList.remove('active-view');
+      excelModal.classList.remove('active-modal');
     });
   }
 
@@ -3791,7 +3791,7 @@ function populateProjectSchoolYearSelect() {
 
       if (!importTargetYear || !importTargetSection) return;
 
-      excelModal.classList.remove('active-view');
+      excelModal.classList.remove('active-modal');
       // Trigger file selector
       excelInput.click();
     });
