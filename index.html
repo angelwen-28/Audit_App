@@ -426,6 +426,64 @@
                 </p>
               </div>
             </div>
+
+            <!-- Student Compliance & Sanctions Ledger -->
+            <div class="glass-panel" style="padding: 24px; border-radius: var(--radius-md); margin-top: 20px; margin-bottom: 20px;">
+              <div class="column-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-users-gear" style="color: var(--primary);"></i> Student Compliance & Sanctions Ledger
+                </h3>
+                <div style="display: flex; gap: 10px;">
+                  <button type="button" id="btn-populate-students" class="btn btn-outline btn-small" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-users-viewfinder"></i> Populate Default Roster
+                  </button>
+                  <button type="button" id="btn-add-student-row" class="btn btn-primary btn-small" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-user-plus"></i> Add Student
+                  </button>
+                </div>
+              </div>
+
+              <!-- Live Compliance Summaries -->
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+                <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-glass); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">CONTRIBUTIONS COLLECTED</span>
+                  <strong id="compliance-total-contributions" style="font-size: 1.1rem; color: var(--primary);">₱0.00</strong>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-glass); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">MEMBERSHIP FEES PAID</span>
+                  <strong id="compliance-total-membership" style="font-size: 1.1rem; color: var(--success);">₱0.00</strong>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-glass); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">SANCTIONS COLLECTED</span>
+                  <strong id="compliance-total-sanctions" style="font-size: 1.1rem; color: var(--danger);">₱0.00</strong>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-glass); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">ATTENDANCE RATE</span>
+                  <strong id="compliance-attendance-rate" style="font-size: 1.1rem; color: var(--text-primary);">0%</strong>
+                </div>
+              </div>
+
+              <!-- Student compliance list table -->
+              <div style="overflow-x: auto; max-height: 350px; overflow-y: auto; border: 1px solid var(--border-glass); border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.25);">
+                <table class="expense-table" style="background: transparent; margin-bottom: 0; min-width: 800px;">
+                  <thead>
+                    <tr>
+                      <th style="padding: 10px 14px; position: sticky; top: 0; background: rgba(241, 245, 249, 0.95); z-index: 10;">Student Name</th>
+                      <th style="padding: 10px 14px; position: sticky; top: 0; background: rgba(241, 245, 249, 0.95); z-index: 10; text-align: right; width: 120px;">Contribution (₱)</th>
+                      <th style="padding: 10px 14px; position: sticky; top: 0; background: rgba(241, 245, 249, 0.95); z-index: 10; text-align: center; width: 80px;">Paid</th>
+                      <th style="padding: 10px 14px; position: sticky; top: 0; background: rgba(241, 245, 249, 0.95); z-index: 10; text-align: center; width: 100px;">Present</th>
+                      <th style="padding: 10px 14px; position: sticky; top: 0; background: rgba(241, 245, 249, 0.95); z-index: 10; text-align: center; width: 100px;">Membership</th>
+                      <th style="padding: 10px 14px; position: sticky; top: 0; background: rgba(241, 245, 249, 0.95); z-index: 10; text-align: right; width: 120px;">Sanction (₱)</th>
+                      <th style="padding: 10px 14px; position: sticky; top: 0; background: rgba(241, 245, 249, 0.95); z-index: 10; text-align: center; width: 80px;">Paid</th>
+                      <th style="padding: 10px 14px; position: sticky; top: 0; background: rgba(241, 245, 249, 0.95); z-index: 10; text-align: center; width: 60px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="student-compliance-rows">
+                    <!-- Dynamic student rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
             
             <!-- Expenses List Controls -->
             <div class="list-controls-bar">

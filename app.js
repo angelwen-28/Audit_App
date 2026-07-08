@@ -1209,6 +1209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Render the expense records
     renderExpenseList();
+    renderStudentCompliance(event.id);
   }
 
   function populateFinanceColumns(eventId) {
@@ -3053,6 +3054,185 @@ function populateProjectSchoolYearSelect() {
     const sizes = ['Bytes', 'KB', 'MB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  // --- 16b. Student Compliance & Sanctions Ledger Logic ---
+  function renderStudentCompliance(eventId) {
+    if (!eventId || eventId === 'overall') return;
+    
+    const storageKey = `student_compliance_${eventId}`;
+    let studentsList = [];
+    try {
+      studentsList = JSON.parse(localStorage.getItem(storageKey)) || [];
+    } catch (e) {
+      studentsList = [];
+    }
+    
+    const container = document.getElementById('student-compliance-rows');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+    
+    if (studentsList.length === 0) {
+      container.innerHTML = `
+        <tr>
+          <td colspan="8" class="text-center" style="color: var(--text-muted); padding: 30px; font-weight: 500;">
+            No students registered in compliance ledger for this event. Click 'Add Student' or 'Populate Default Roster' to start.
+          </td>
+        </tr>
+      `;
+      updateComplianceSummaries(studentsList);
+      return;
+    }
+    
+    studentsList.forEach((stud, idx) => {
+      const tr = document.createElement('tr');
+      
+      tr.innerHTML = `
+        <td>
+          <input type="text" class="table-input stud-name-input" value="${escapeAttr(stud.name)}" ${!hasWriteAccess ? 'readonly' : ''} style="font-weight: 600;"/>
+        </td>
+        <td class="text-right">
+          <input type="number" class="table-input text-right stud-contrib-input" min="0" step="any" value="${stud.contribution || 0}" ${!hasWriteAccess ? 'readonly' : ''}/>
+        </td>
+        <td class="text-center">
+          <input type="checkbox" class="stud-contrib-paid" ${stud.contribPaid ? 'checked' : ''} ${!hasWriteAccess ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer;"/>
+        </td>
+        <td class="text-center">
+          <input type="checkbox" class="stud-present" ${stud.present ? 'checked' : ''} ${!hasWriteAccess ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer;"/>
+        </td>
+        <td class="text-center">
+          <input type="checkbox" class="stud-membership" ${stud.membershipPaid ? 'checked' : ''} ${!hasWriteAccess ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer;"/>
+        </td>
+        <td class="text-right">
+          <input type="number" class="table-input text-right stud-sanction-input" min="0" step="any" value="${stud.sanction || 0}" ${!hasWriteAccess ? 'readonly' : ''}/>
+        </td>
+        <td class="text-center">
+          <input type="checkbox" class="stud-sanction-paid" ${stud.sanctionPaid ? 'checked' : ''} ${!hasWriteAccess ? 'disabled' : ''} style="width: 18px; height: 18px; cursor: pointer;"/>
+        </td>
+        <td class="text-center">
+          ${hasWriteAccess ? `
+            <button class="btn btn-icon btn-small text-danger btn-delete-student" title="Delete Student" style="padding: 2px; border:none; background:none; cursor:pointer;">
+              <i class="fa-regular fa-trash-can"></i>
+            </button>
+          ` : ''}
+        </td>
+      `;
+      
+      if (hasWriteAccess) {
+        tr.querySelector('.stud-name-input').addEventListener('change', (e) => {
+          studentsList[idx].name = e.target.value.trim();
+          saveAndRefreshCompliance(eventId, studentsList);
+        });
+        tr.querySelector('.stud-contrib-input').addEventListener('change', (e) => {
+          studentsList[idx].contribution = parseFloat(e.target.value) || 0;
+          saveAndRefreshCompliance(eventId, studentsList);
+        });
+        tr.querySelector('.stud-contrib-paid').addEventListener('change', (e) => {
+          studentsList[idx].contribPaid = e.target.checked;
+          saveAndRefreshCompliance(eventId, studentsList);
+        });
+        tr.querySelector('.stud-present').addEventListener('change', (e) => {
+          studentsList[idx].present = e.target.checked;
+          saveAndRefreshCompliance(eventId, studentsList);
+        });
+        tr.querySelector('.stud-membership').addEventListener('change', (e) => {
+          studentsList[idx].membershipPaid = e.target.checked;
+          saveAndRefreshCompliance(eventId, studentsList);
+        });
+        tr.querySelector('.stud-sanction-input').addEventListener('change', (e) => {
+          studentsList[idx].sanction = parseFloat(e.target.value) || 0;
+          saveAndRefreshCompliance(eventId, studentsList);
+        });
+        tr.querySelector('.stud-sanction-paid').addEventListener('change', (e) => {
+          studentsList[idx].sanctionPaid = e.target.checked;
+          saveAndRefreshCompliance(eventId, studentsList);
+        });
+        tr.querySelector('.btn-delete-student').addEventListener('click', () => {
+          studentsList.splice(idx, 1);
+          saveAndRefreshCompliance(eventId, studentsList);
+        });
+      }
+      
+      container.appendChild(tr);
+    });
+    
+    updateComplianceSummaries(studentsList);
+  }
+
+  function saveAndRefreshCompliance(eventId, studentsList) {
+    localStorage.setItem(`student_compliance_${eventId}`, JSON.stringify(studentsList));
+    renderStudentCompliance(eventId);
+  }
+
+  function updateComplianceSummaries(studentsList) {
+    const totalContrib = studentsList.reduce((sum, s) => sum + (s.contribPaid ? (s.contribution || 0) : 0), 0);
+    const totalMember = studentsList.reduce((sum, s) => sum + (s.membershipPaid ? 150 : 0), 0);
+    const totalSanct = studentsList.reduce((sum, s) => sum + (s.sanctionPaid ? (s.sanction || 0) : 0), 0);
+    const presentCount = studentsList.filter(s => s.present).length;
+    const rate = studentsList.length > 0 ? Math.round((presentCount / studentsList.length) * 100) : 0;
+    
+    const elContrib = document.getElementById('compliance-total-contributions');
+    const elMember = document.getElementById('compliance-total-membership');
+    const elSanct = document.getElementById('compliance-total-sanctions');
+    const elRate = document.getElementById('compliance-attendance-rate');
+
+    if (elContrib) elContrib.textContent = `₱${formatMoney(totalContrib)}`;
+    if (elMember) elMember.textContent = `₱${formatMoney(totalMember)}`;
+    if (elSanct) elSanct.textContent = `₱${formatMoney(totalSanct)}`;
+    if (elRate) elRate.textContent = `${rate}%`;
+  }
+
+  function populateDefaultRoster(eventId) {
+    const event = appState.events.find(e => e.id === eventId);
+    const defaultContrib = event ? (event.fee || 50) : 50;
+    const defaultRoster = [
+      { name: 'John Doe', contribution: defaultContrib, contribPaid: true, present: true, membershipPaid: true, sanction: 0, sanctionPaid: false },
+      { name: 'Jane Smith', contribution: defaultContrib, contribPaid: true, present: true, membershipPaid: false, sanction: 0, sanctionPaid: false },
+      { name: 'Michael Johnson', contribution: defaultContrib, contribPaid: false, present: false, membershipPaid: true, sanction: 100, sanctionPaid: true },
+      { name: 'Emily Davis', contribution: defaultContrib, contribPaid: true, present: true, membershipPaid: true, sanction: 0, sanctionPaid: false },
+      { name: 'Sarah Wilson', contribution: defaultContrib, contribPaid: false, present: false, membershipPaid: false, sanction: 100, sanctionPaid: false }
+    ];
+    saveAndRefreshCompliance(eventId, defaultRoster);
+  }
+
+  // Wire Compliance Quick Action Buttons
+  const btnPopulate = document.getElementById('btn-populate-students');
+  if (btnPopulate) {
+    btnPopulate.addEventListener('click', () => {
+      const activeEvtId = appState.activeEventId;
+      if (activeEvtId) populateDefaultRoster(activeEvtId);
+    });
+  }
+
+  const btnAddRow = document.getElementById('btn-add-student-row');
+  if (btnAddRow) {
+    btnAddRow.addEventListener('click', () => {
+      const activeEvtId = appState.activeEventId;
+      if (activeEvtId) {
+        const storageKey = `student_compliance_${activeEvtId}`;
+        let currentList = [];
+        try {
+          currentList = JSON.parse(localStorage.getItem(storageKey)) || [];
+        } catch (e) {
+          currentList = [];
+        }
+        const event = appState.events.find(e => e.id === activeEvtId);
+        const defaultContrib = event ? (event.fee || 50) : 50;
+        currentList.push({
+          name: 'New Student',
+          contribution: defaultContrib,
+          contribPaid: false,
+          present: true,
+          membershipPaid: false,
+          sanction: 0,
+          sanctionPaid: false
+        });
+        saveAndRefreshCompliance(activeEvtId, currentList);
+      }
+    });
   }
 
   // --- 17. Application Initialization Bootloader ---
