@@ -3660,38 +3660,68 @@ function populateProjectSchoolYearSelect() {
     });
   }
 
-  // ---- Wire Add Student button ----
+  // ---- Wire Add Student Form Modal ----
   const btnAddStu = document.getElementById('btn-sanctions-add-student');
-  if (btnAddStu) {
+  const sancModal = document.getElementById('sanctions-student-modal');
+  const sancForm = document.getElementById('sanctions-student-form');
+  const btnCloseSancModal = document.getElementById('btn-close-sanctions-modal');
+
+  if (btnAddStu && sancModal) {
     btnAddStu.addEventListener('click', () => {
       const sy = getSY(); const sem = getSem();
       if (!sy || !sem) { alert('Please select a School Year and pick a Semester first.'); return; }
-      
-      const name = prompt('Enter Student Full Name:');
-      if (!name || !name.trim()) return;
 
+      // Clear input fields
+      document.getElementById('sanc-modal-name').value = '';
+      
       const yearFilter = getYearLevelFilter();
       const sectionFilter = getSectionFilter();
 
-      let chosenYear = yearFilter === 'all' ? '1st Year' : yearFilter;
-      chosenYear = prompt('Enter Year Level (1st Year, 2nd Year, 3rd Year, 4th Year):', chosenYear);
-      if (!chosenYear) return;
+      // Pre-fill modal dropdowns with current filter settings if applicable
+      const yearSelect = document.getElementById('sanc-modal-year');
+      if (yearSelect) {
+        yearSelect.value = yearFilter === 'all' ? '1st Year' : yearFilter;
+      }
 
-      let chosenSection = sectionFilter === 'all' ? 'A' : sectionFilter;
-      chosenSection = prompt('Enter Section (e.g. A, B, C):', chosenSection);
-      if (!chosenSection) return;
+      const sectionInput = document.getElementById('sanc-modal-section');
+      if (sectionInput) {
+        sectionInput.value = sectionFilter === 'all' ? '' : sectionFilter;
+      }
+
+      sancModal.classList.add('active-view');
+    });
+  }
+
+  if (btnCloseSancModal && sancModal) {
+    btnCloseSancModal.addEventListener('click', () => {
+      sancModal.classList.remove('active-view');
+    });
+  }
+
+  if (sancForm && sancModal) {
+    sancForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const sy = getSY(); const sem = getSem();
+      
+      const name = document.getElementById('sanc-modal-name').value.trim();
+      const year = document.getElementById('sanc-modal-year').value;
+      const section = document.getElementById('sanc-modal-section').value.trim().toUpperCase();
+
+      if (!name || !year || !section) return;
 
       const ledger = loadLedger(sy, sem);
       ledger.students.push({
         id: uid(),
-        name: name.trim(),
-        yearLevel: chosenYear.trim(),
-        section: chosenSection.trim().toUpperCase(),
+        name: name,
+        yearLevel: year,
+        section: section,
         attendance: {},
         paid: false
       });
       saveLedger(sy, sem, ledger);
       renderSanctionsTable();
+
+      sancModal.classList.remove('active-view');
     });
   }
 
