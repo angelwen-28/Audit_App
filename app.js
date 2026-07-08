@@ -945,6 +945,15 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSanctionsButtonVisibility();
   }
 
+  function updateSanctionsButtonVisibility() {
+    const btn = document.getElementById('btn-sanctions-view');
+    if (!btn) return;
+    const ok = appState.currentUser &&
+      (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+    btn.classList.toggle('hide', !ok);
+  }
+
+
 
   function setInlineInputsEditable(editable) {
     const inputs = [el.inputStudents, el.inputFee, el.inputMembership, el.inputSanctions];
