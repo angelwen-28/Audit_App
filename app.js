@@ -259,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
     receipts: {},
     expenses: {},
     activeEventId: null,
+    activeMode: 'audit', // 'audit' or 'sanctions'
     // Computed balances per event (keyed by event id)
     computedBalances: {},
     filters: {
@@ -705,6 +706,8 @@ document.addEventListener('DOMContentLoaded', () => {
     eventList: document.getElementById('event-list'),
     btnOverallDashboard: document.getElementById('btn-overall-dashboard'),
     navOverallBalance: document.getElementById('nav-overall-balance'),
+    sanctionsEventList: document.getElementById('sanctions-event-list'),
+    sidebarSanctionsSection: document.getElementById('sidebar-sanctions-section'),
     
     // Filters
     filterSemester: document.getElementById('filter-semester'),
@@ -719,6 +722,8 @@ document.addEventListener('DOMContentLoaded', () => {
     overallKioskBalance: document.getElementById('overall-kiosk-balance'),
     kioskLedgerRows: document.getElementById('kiosk-ledger-rows'),
     studentCompliancePanel: document.getElementById('student-compliance-panel'),
+    listControlsBar: document.querySelector('.list-controls-bar'),
+    expenseCardsWrapper: document.querySelector('.expense-list-table-container'),
     
     // Project Summary Card
     projectName: document.getElementById('detail-project-name'),
@@ -976,125 +981,157 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       el.eventCount.textContent = filteredEvents.length;
-      el.eventList.innerHTML = '';
-      
-      if (filteredEvents.length === 0) {
-        el.eventList.innerHTML = `
-          <div class="expense-empty-state" style="padding: 30px 10px;">
-            <i class="fa-solid fa-folder-closed"></i>
-            <p>No active events found.</p>
-          </div>
-        `;
-        return;
-      }
 
-      // Group events by school year
-      const groups = {};
-      filteredEvents.forEach(evt => {
-        const sy = evt.schoolYear || 'Unknown S-Y';
-        if (!groups[sy]) {
-          groups[sy] = [];
-        }
-        groups[sy].push(evt);
-      });
-      
       const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
 
-      // Sort school years descending (newest first)
-      const sortedSYs = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+      // Update sidebar sanctions section container visibility
+      if (el.sidebarSanctionsSection) {
+        if (hasWriteAccess) {
+          el.sidebarSanctionsSection.classList.remove('hide');
+        } else {
+          el.sidebarSanctionsSection.classList.add('hide');
+        }
+      }
 
-      sortedSYs.forEach(sy => {
-        const eventsInSY = groups[sy];
-        
-        const syContainer = document.createElement('div');
-        syContainer.className = 'sy-group-container';
-        
-        // Auto-expand if the group contains the active selected event
-        const hasActiveEvent = eventsInSY.some(e => e.id === appState.activeEventId);
-        const isCollapsed = appState.collapsedSY.has(sy) && !hasActiveEvent;
-        
-        if (isCollapsed) {
-          syContainer.classList.add('collapsed');
+      // Helper function to render a school-year grouped list into a container
+      const renderListIntoContainer = (events, container, mode) => {
+        container.innerHTML = '';
+        if (events.length === 0) {
+          container.innerHTML = `
+            <div class="expense-empty-state" style="padding: 20px 10px;">
+              <p style="font-size: 0.8rem; color: var(--text-muted);">No active events found.</p>
+            </div>
+          `;
+          return;
         }
 
-        syContainer.innerHTML = `
-          <div class="sy-group-header">
-            <span><i class="fa-solid fa-graduation-cap"></i> S-Y ${escapeHTML(sy)} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">(${eventsInSY.length} ${eventsInSY.length === 1 ? 'event' : 'events'})</span></span>
-            <i class="fa-solid fa-chevron-down chevron-icon"></i>
-          </div>
-          <div class="sy-group-body"></div>
-        `;
-
-        const header = syContainer.querySelector('.sy-group-header');
-        const body = syContainer.querySelector('.sy-group-body');
-
-        header.addEventListener('click', () => {
-          const collapsed = syContainer.classList.toggle('collapsed');
-          if (collapsed) {
-            appState.collapsedSY.add(sy);
-          } else {
-            appState.collapsedSY.delete(sy);
+        // Group events by school year
+        const groups = {};
+        events.forEach(evt => {
+          const sy = evt.schoolYear || 'Unknown S-Y';
+          if (!groups[sy]) {
+            groups[sy] = [];
           }
+          groups[sy].push(evt);
         });
 
-        eventsInSY.forEach(evt => {
-          const bal = appState.computedBalances[evt.id] || {};
-          const isActive = evt.id === appState.activeEventId;
-          const statusClass = evt.status === 'Active' ? 'status-active' : 'status-closed';
+        // Sort school years descending (newest first)
+        const sortedSYs = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+        sortedSYs.forEach(sy => {
+          const eventsInSY = groups[sy];
           
-          const card = document.createElement('div');
-          card.className = `event-card ${isActive ? 'active-card' : ''}`;
-          card.innerHTML = `
-            <div class="card-header-row">
-              <div class="card-title">${escapeHTML(evt.name)}</div>
-              <span class="badge-status ${statusClass}">${evt.status}</span>
+          const syContainer = document.createElement('div');
+          syContainer.className = 'sy-group-container';
+          
+          // Auto-expand if this group contains the active event and mode matches
+          const hasActiveEvent = eventsInSY.some(e => e.id === appState.activeEventId) && appState.activeMode === mode;
+          const collapseKey = `${mode}_${sy}`;
+          const isCollapsed = appState.collapsedSY.has(collapseKey) && !hasActiveEvent;
+          
+          if (isCollapsed) {
+            syContainer.classList.add('collapsed');
+          }
+
+          syContainer.innerHTML = `
+            <div class="sy-group-header">
+              <span><i class="fa-solid fa-graduation-cap"></i> S-Y ${escapeHTML(sy)} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">(${eventsInSY.length})</span></span>
+              <i class="fa-solid fa-chevron-down chevron-icon"></i>
             </div>
-            <div class="card-meta">
-              <i class="fa-regular fa-calendar"></i>
-              <span>${formatDateString(evt.date)}</span>
-            </div>
-            <div class="card-amount-row">
-              <div>
-                <div class="amount-label">Pool / Remaining</div>
-              </div>
-              <div class="amount-value">
-                <span class="text-budget">₱${formatMoney(bal.totalPool || 0)}</span>
-                <span style="color: var(--text-muted); font-size: 0.75rem;"> / ₱${formatMoney(bal.netRemaining || 0)}</span>
-              </div>
-            </div>
-            ${hasWriteAccess ? `
-            <div class="card-actions-row" style="display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-glass);">
-              <button class="btn-card-edit" data-id="${evt.id}" title="Edit Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                <i class="fa-regular fa-pen-to-square"></i> Edit
-              </button>
-              <button class="btn-card-delete" data-id="${evt.id}" title="Delete Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                <i class="fa-regular fa-trash-can"></i> Delete
-              </button>
-            </div>
-            ` : ''}
+            <div class="sy-group-body"></div>
           `;
-          
-          card.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-card-edit') || e.target.closest('.btn-card-delete')) return;
-            selectEvent(evt.id);
+
+          const header = syContainer.querySelector('.sy-group-header');
+          const body = syContainer.querySelector('.sy-group-body');
+
+          header.addEventListener('click', () => {
+            const collapsed = syContainer.classList.toggle('collapsed');
+            if (collapsed) {
+              appState.collapsedSY.add(collapseKey);
+            } else {
+              appState.collapsedSY.delete(collapseKey);
+            }
           });
 
-          if (hasWriteAccess) {
-            card.querySelector('.btn-card-edit').addEventListener('click', (e) => {
-              e.stopPropagation();
-              openProjectModal('edit', evt.id);
+          eventsInSY.forEach(evt => {
+            const bal = appState.computedBalances[evt.id] || {};
+            const isActive = evt.id === appState.activeEventId && appState.activeMode === mode;
+            const statusClass = evt.status === 'Active' ? 'status-active' : 'status-closed';
+            
+            const card = document.createElement('div');
+            card.className = `event-card ${isActive ? 'active-card' : ''}`;
+            card.innerHTML = `
+              <div class="card-header-row">
+                <div class="card-title">${escapeHTML(evt.name)}</div>
+                <span class="badge-status ${statusClass}">${evt.status}</span>
+              </div>
+              <div class="card-meta">
+                <i class="fa-regular fa-calendar"></i>
+                <span>${formatDateString(evt.date)}</span>
+              </div>
+              ${mode === 'audit' ? `
+              <div class="card-amount-row">
+                <div>
+                  <div class="amount-label">Pool / Remaining</div>
+                </div>
+                <div class="amount-value">
+                  <span class="text-budget">₱${formatMoney(bal.totalPool || 0)}</span>
+                  <span style="color: var(--text-muted); font-size: 0.75rem;"> / ₱${formatMoney(bal.netRemaining || 0)}</span>
+                </div>
+              </div>
+              ` : `
+              <div class="card-amount-row">
+                <div>
+                  <div class="amount-label">Ledger Summary</div>
+                </div>
+                <div class="amount-value" style="font-size: 0.75rem; color: var(--success); font-weight: 600;">
+                  <span>₱${formatMoney(bal.studentCollection || 0)} collected</span>
+                </div>
+              </div>
+              `}
+              ${(mode === 'audit' && hasWriteAccess) ? `
+              <div class="card-actions-row" style="display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-glass);">
+                <button class="btn-card-edit" data-id="${evt.id}" title="Edit Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                  <i class="fa-regular fa-pen-to-square"></i> Edit
+                </button>
+                <button class="btn-card-delete" data-id="${evt.id}" title="Delete Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                  <i class="fa-regular fa-trash-can"></i> Delete
+                </button>
+              </div>
+              ` : ''}
+            `;
+            
+            card.addEventListener('click', (e) => {
+              if (e.target.closest('.btn-card-edit') || e.target.closest('.btn-card-delete')) return;
+              selectEvent(evt.id, mode);
             });
-            card.querySelector('.btn-card-delete').addEventListener('click', (e) => {
-              e.stopPropagation();
-              deleteEvent(evt.id);
-            });
-          }
 
-          body.appendChild(card);
+            if (mode === 'audit' && hasWriteAccess) {
+              card.querySelector('.btn-card-edit').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openProjectModal('edit', evt.id);
+              });
+              card.querySelector('.btn-card-delete').addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteEvent(evt.id);
+              });
+            }
+
+            body.appendChild(card);
+          });
+
+          container.appendChild(syContainer);
         });
+      };
 
-        el.eventList.appendChild(syContainer);
-      });
+      // Render standard list into el.eventList
+      renderListIntoContainer(filteredEvents, el.eventList, 'audit');
+
+      // Render sanctions list into el.sanctionsEventList
+      if (hasWriteAccess && el.sanctionsEventList) {
+        renderListIntoContainer(filteredEvents, el.sanctionsEventList, 'sanctions');
+      }
+
     } catch (err) {
       console.error('Error rendering event list:', err);
       alert('Render Error: ' + err.message);
@@ -1102,8 +1139,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- 9. Event Selection & Detail Panel ---
-  function selectEvent(eventId) {
+  function selectEvent(eventId, mode = 'audit') {
     appState.activeEventId = eventId;
+    appState.activeMode = eventId === 'overall' ? 'audit' : mode;
     
     renderEventList();
     
@@ -1212,11 +1250,29 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExpenseList();
     
     if (el.studentCompliancePanel) {
-      if (hasWriteAccess) {
+      if (hasWriteAccess && appState.activeMode === 'sanctions') {
         el.studentCompliancePanel.classList.remove('hide');
         renderStudentCompliance(event.id);
+        
+        // Hide regular financial columns & expenses
+        el.financialColumns.classList.add('hide');
+        el.eventPhotoPanel.classList.add('hide');
+        if (el.listControlsBar) el.listControlsBar.classList.add('hide');
+        if (el.expenseCardsWrapper) el.expenseCardsWrapper.classList.add('hide');
       } else {
         el.studentCompliancePanel.classList.add('hide');
+        
+        // Show regular financial columns & expenses
+        el.financialColumns.classList.remove('hide');
+        if (event.photoUrl) {
+          el.eventPhotoPanel.classList.remove('hide');
+          el.financialColumns.classList.add('has-photo');
+        } else {
+          el.eventPhotoPanel.classList.add('hide');
+          el.financialColumns.classList.remove('has-photo');
+        }
+        if (el.listControlsBar) el.listControlsBar.classList.remove('hide');
+        if (el.expenseCardsWrapper) el.expenseCardsWrapper.classList.remove('hide');
       }
     }
   }

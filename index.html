@@ -222,8 +222,22 @@
             <i class="fa-solid fa-plus"></i> New Audit Project
           </button>
 
-          <div class="event-list-container" id="event-list">
-            <!-- Event cards injected here by JS -->
+          <div class="sidebar-scrollable-content" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; margin-top: 8px;">
+            <div class="sidebar-section-header" style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 6px 6px 6px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Expenses & Receipts
+            </div>
+            <div class="event-list-container" id="event-list" style="overflow: visible; flex: none;">
+              <!-- Event cards injected here by JS -->
+            </div>
+
+            <div id="sidebar-sanctions-section" class="hide">
+              <div class="sidebar-section-header" style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 18px 6px 6px 6px; display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--border-glass); margin-top: 12px;">
+                <i class="fa-solid fa-users-gear" style="color: var(--success);"></i> Sanctions & Compliance
+              </div>
+              <div class="event-list-container" id="sanctions-event-list" style="overflow: visible; flex: none;">
+                <!-- Sanctions event cards injected here by JS -->
+              </div>
+            </div>
           </div>
         </aside>
         
