@@ -3687,6 +3687,140 @@ function populateProjectSchoolYearSelect() {
     });
   }
 
+  // ---- Wire Excel/CSV Import ----
+  const excelInput = document.getElementById('sanctions-excel-file');
+  if (excelInput) {
+    excelInput.addEventListener('change', (e) => {
+      const sy = getSY(); const sem = getSem();
+      if (!sy || !sem) {
+        alert('Please select a School Year and Semester first.');
+        excelInput.value = '';
+        return;
+      }
+
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      reader.onload = (evt) => {
+        try {
+          let importedStudents = [];
+          if (ext === 'csv') {
+            const text = evt.target.result;
+            const parsed = Papa.parse(text, { header: false, skipEmptyLines: true });
+            importedStudents = extractStudentsFromRows(parsed.data);
+          } else {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            importedStudents = extractStudentsFromRows(jsonData);
+          }
+
+          if (importedStudents.length === 0) {
+            alert('No student names found in spreadsheet. Check header titles.');
+          } else {
+            const ledger = loadLedger(sy, sem);
+            const existingNames = new Set(ledger.students.map(s => s.name.toLowerCase()));
+            let addedCount = 0;
+            importedStudents.forEach(stu => {
+              if (!existingNames.has(stu.name.toLowerCase())) {
+                ledger.students.push({
+                  id: uid(),
+                  name: stu.name,
+                  yearLevel: stu.yearLevel || '1st Year',
+                  section: stu.section || 'A',
+                  attendance: {},
+                  paid: false
+                });
+                addedCount++;
+              }
+            });
+            saveLedger(sy, sem, ledger);
+            renderSanctionsTable();
+            alert(`Successfully imported ${addedCount} student(s) grouped by Year Level and Section!`);
+          }
+        } catch (error) {
+          console.error(error);
+          alert('Failed to parse file.');
+        }
+        excelInput.value = '';
+      };
+
+      if (ext === 'csv') {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    });
+  }
+
+  // Parse Excel table structure to extract Year Level, Section and Student Names
+  function extractStudentsFromRows(rows) {
+    if (!rows || rows.length === 0) return [];
+    
+    let nameIdx = -1;
+    let yearIdx = -1;
+    let sectionIdx = -1;
+
+    const searchLimit = Math.min(rows.length, 6);
+    for (let r = 0; r < searchLimit; r++) {
+      const row = rows[r];
+      if (!row) continue;
+      for (let c = 0; c < row.length; c++) {
+        const val = String(row[c] || '').toLowerCase().trim();
+        if (val.includes('name') || val.includes('student') || val.includes('fullname') || val.includes('full name')) {
+          nameIdx = c;
+        }
+        if (val.includes('year') || val.includes('level') || val.includes('yr') || val.includes('grade')) {
+          yearIdx = c;
+        }
+        if (val.includes('section') || val.includes('sec')) {
+          sectionIdx = c;
+        }
+      }
+      if (nameIdx !== -1) {
+        rows.splice(0, r + 1); // remove headers
+        break;
+      }
+    }
+
+    if (nameIdx === -1) nameIdx = 0;
+
+    const list = [];
+    rows.forEach(row => {
+      if (!row || !row[nameIdx]) return;
+      const name = String(row[nameIdx]).trim();
+      if (!name || name.toLowerCase() === 'name' || name.toLowerCase().includes('student list')) return;
+      
+      let yearRaw = '1st Year';
+      if (yearIdx !== -1 && row[yearIdx]) {
+        const yStr = String(row[yearIdx]).toLowerCase().trim();
+        if (yStr.includes('1') || yStr.includes('first')) yearRaw = '1st Year';
+        else if (yStr.includes('2') || yStr.includes('second')) yearRaw = '2nd Year';
+        else if (yStr.includes('3') || yStr.includes('third')) yearRaw = '3rd Year';
+        else if (yStr.includes('4') || yStr.includes('fourth')) yearRaw = '4th Year';
+        else yearRaw = String(row[yearIdx]).trim();
+      }
+      
+      let sectionRaw = 'A';
+      if (sectionIdx !== -1 && row[sectionIdx]) {
+        sectionRaw = String(row[sectionIdx]).trim().toUpperCase();
+      }
+
+      list.push({
+        name: name,
+        yearLevel: yearRaw,
+        section: sectionRaw
+      });
+    });
+
+    return list;
+  }
+
 
 
   initDatabase().then(() => {
