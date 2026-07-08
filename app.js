@@ -3235,6 +3235,8 @@ function populateProjectSchoolYearSelect() {
   function renderSanctionsTable() {
     const sy  = getSY();
     const sem = getSem();
+    const yearFilter = getYearLevelFilter();
+    const sectionFilter = getSectionFilter();
 
     const emptyState   = document.getElementById('sanctions-empty-state');
     const tableWrapper = document.getElementById('sanctions-table-wrapper');
@@ -3256,7 +3258,17 @@ function populateProjectSchoolYearSelect() {
 
     const ledger   = loadLedger(sy, sem);
     const events   = ledger.events   || [];
-    const students = ledger.students || [];
+    const allStudents = ledger.students || [];
+
+    // Populate sections dropdown dynamically from loaded students
+    updateSectionDropdownOptions(allStudents);
+
+    // Apply Year and Section filtering
+    const students = allStudents.filter(s => {
+      const matchYear = yearFilter === 'all' || s.yearLevel === yearFilter;
+      const matchSec = sectionFilter === 'all' || (s.section && s.section.toUpperCase().trim() === sectionFilter.toUpperCase().trim());
+      return matchYear && matchSec;
+    });
 
     const isAuditor = appState.currentUser &&
       (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
@@ -3271,7 +3283,6 @@ function populateProjectSchoolYearSelect() {
     // ===================== HEADER =====================
     thead.innerHTML = '';
 
-    // Row 1
     const tr1 = document.createElement('tr');
 
     const thName = document.createElement('th');
@@ -3283,11 +3294,10 @@ function populateProjectSchoolYearSelect() {
     if (events.length > 0) {
       const thGrp = document.createElement('th');
       thGrp.className = 'col-events-group';
-      thGrp.colSpan = events.length + (isAuditor ? 1 : 0); // +1 for add-col cell
+      thGrp.colSpan = events.length + (isAuditor ? 1 : 0);
       thGrp.textContent = 'EVENTS';
       tr1.appendChild(thGrp);
     } else if (isAuditor) {
-      // placeholder span for the add-col header
       const thGrp = document.createElement('th');
       thGrp.className = 'col-events-group';
       thGrp.textContent = 'EVENTS';
@@ -3314,7 +3324,6 @@ function populateProjectSchoolYearSelect() {
     }
     thead.appendChild(tr1);
 
-    // Row 2: individual event name headers (editable + deletable)
     const tr2 = document.createElement('tr');
     events.forEach((ev, eIdx) => {
       const th = document.createElement('th');
@@ -3335,7 +3344,7 @@ function populateProjectSchoolYearSelect() {
           persist();
         });
         th.querySelector('.sanc-evdel').addEventListener('click', () => {
-          if (!confirm(`Delete event column "${ev.name}"? Attendance data for this event will be removed.`)) return;
+          if (!confirm(`Delete event column "${ev.name}"?`)) return;
           ledger.events.splice(eIdx, 1);
           ledger.students.forEach(s => { if (s.attendance) delete s.attendance[ev.id]; });
           rerender();
@@ -3346,16 +3355,14 @@ function populateProjectSchoolYearSelect() {
       tr2.appendChild(th);
     });
 
-    // "+ Add Event" button column header (auditor only)
     if (isAuditor) {
       const thAdd = document.createElement('th');
       thAdd.className = 'col-event';
       thAdd.style.background = 'rgba(249,115,22,0.15)';
       thAdd.style.cursor = 'pointer';
-      thAdd.title = 'Add a new event column';
       thAdd.innerHTML = `<span style="font-size:1.1rem;color:var(--primary);">＋</span>`;
       thAdd.addEventListener('click', () => {
-        const name = prompt('Enter event name (e.g. General Assembly):');
+        const name = prompt('Enter event name:');
         if (!name || !name.trim()) return;
         ledger.events.push({ id: uid(), name: name.trim().toUpperCase() });
         rerender();
@@ -3368,17 +3375,26 @@ function populateProjectSchoolYearSelect() {
     // ===================== BODY =====================
     tbody.innerHTML = '';
 
-    students.forEach((stu, sIdx) => {
+    students.forEach((stu, filteredIdx) => {
+      const sIdx = ledger.students.findIndex(s => s.id === stu.id);
+      if (sIdx === -1) return;
+
       const tr = document.createElement('tr');
 
-      // Name cell
       const tdName = document.createElement('td');
       tdName.className = 'cell-name';
-      const nameIn = document.createElement('input');
-      nameIn.type = 'text';
-      nameIn.className = 'sanctions-name-input';
-      nameIn.value = stu.name || '';
-      nameIn.placeholder = 'Student Name';
+      
+      tdName.innerHTML = `
+        <div style="display:flex;flex-direction:column;">
+          <input type="text" class="sanctions-name-input" value="${escapeAttr(stu.name)}" style="font-weight:700;">
+          <div style="font-size:0.7rem;color:var(--text-muted);display:flex;gap:8px;margin-top:2px;">
+            <span>Yr: ${stu.yearLevel || 'N/A'}</span>
+            <span>Sec: ${stu.section || 'N/A'}</span>
+          </div>
+        </div>
+      `;
+
+      const nameIn = tdName.querySelector('.sanctions-name-input');
       if (isAuditor) {
         nameIn.addEventListener('change', e => {
           ledger.students[sIdx].name = e.target.value.trim();
@@ -3387,10 +3403,8 @@ function populateProjectSchoolYearSelect() {
       } else {
         nameIn.readOnly = true;
       }
-      tdName.appendChild(nameIn);
       tr.appendChild(tdName);
 
-      // One attendance cell per event
       events.forEach(ev => {
         const tdAtt = document.createElement('td');
         tdAtt.className = 'cell-att';
@@ -3418,8 +3432,8 @@ function populateProjectSchoolYearSelect() {
             const newTotal = calcTotal(ledger.students[sIdx]);
             const tc = tr.querySelector('.cell-total');
             if (tc) tc.textContent = `₱${newTotal}`;
-            renderSanctionsFoot(tfoot, events, students);
-            updateSanctionsSummary(events, students);
+            renderSanctionsFoot(tfoot, events, students, isAuditor);
+            updateSanctionsSummary(events, allStudents);
             e.target.className = `sanctions-att-select att-${e.target.value}`;
           });
           tdAtt.appendChild(sel);
@@ -3430,20 +3444,17 @@ function populateProjectSchoolYearSelect() {
         tr.appendChild(tdAtt);
       });
 
-      // Blank cell under the "+ Add Event" column (auditor only)
       if (isAuditor) {
         const tdBlank = document.createElement('td');
         tdBlank.style.background = 'rgba(249,115,22,0.04)';
         tr.appendChild(tdBlank);
       }
 
-      // TOTAL cell
       const tdTotal = document.createElement('td');
       tdTotal.className = 'cell-total';
       tdTotal.textContent = `₱${calcTotal(stu)}`;
       tr.appendChild(tdTotal);
 
-      // PAID checkbox
       const tdPaid = document.createElement('td');
       tdPaid.className = 'cell-paid';
       const chk = document.createElement('input');
@@ -3454,17 +3465,15 @@ function populateProjectSchoolYearSelect() {
       chk.addEventListener('change', e => {
         ledger.students[sIdx].paid = e.target.checked;
         persist();
-        updateSanctionsSummary(events, students);
+        updateSanctionsSummary(events, allStudents);
       });
       tdPaid.appendChild(chk);
       tr.appendChild(tdPaid);
 
-      // Delete student row
       if (isAuditor) {
         const tdDel = document.createElement('td');
         const btnDel = document.createElement('button');
         btnDel.className = 'btn-sanctions-del';
-        btnDel.title = 'Remove student';
         btnDel.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
         btnDel.addEventListener('click', () => {
           ledger.students.splice(sIdx, 1);
@@ -3480,12 +3489,12 @@ function populateProjectSchoolYearSelect() {
     if (students.length === 0) {
       const cols = events.length + (isAuditor ? 1 : 0) + 3;
       tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;padding:36px;color:var(--text-muted);font-weight:500;">
-        No students yet${events.length === 0 ? ' — add events first using the <strong>+ Add Event</strong> button above' : ' — click <strong>Add Student</strong> to get started'}.
+        No students found matching filters. Click <strong>Add Student</strong> or import Excel to add student rows.
       </td></tr>`;
     }
 
     renderSanctionsFoot(tfoot, events, students, isAuditor);
-    updateSanctionsSummary(events, students);
+    updateSanctionsSummary(events, allStudents);
   }
 
   // ---- Footer totals ----
@@ -3542,19 +3551,23 @@ function populateProjectSchoolYearSelect() {
   const btnSanctionsView = document.getElementById('btn-sanctions-view');
   if (btnSanctionsView) btnSanctionsView.addEventListener('click', selectSanctionsView);
 
-  // ---- Wire SY / Semester dropdowns ----
+  // ---- Wire SY / Semester dropdowns & Filter dropdowns ----
   const sySel  = document.getElementById('sanctions-sy-select');
   const semSel = document.getElementById('sanctions-sem-select');
+  const yrSel  = document.getElementById('sanctions-year-level-select');
+  const secSel = document.getElementById('sanctions-section-select');
+  
   if (sySel)  sySel.addEventListener('change', renderSanctionsTable);
   if (semSel) semSel.addEventListener('change', renderSanctionsTable);
+  if (yrSel)  yrSel.addEventListener('change', renderSanctionsTable);
+  if (secSel) secSel.addEventListener('change', renderSanctionsTable);
 
-  // ---- Wire manual SY input (Enter key or blur → add to dropdown & render) ----
+  // ---- Wire manual SY input ----
   const syManual = document.getElementById('sanctions-sy-manual');
   if (syManual) {
     const applyManualSY = () => {
       const v = syManual.value.trim();
       if (!v) return;
-      // Add to dropdown if not there, then select it
       const sel = document.getElementById('sanctions-sy-select');
       if (sel) {
         let found = false;
@@ -3572,13 +3585,13 @@ function populateProjectSchoolYearSelect() {
     syManual.addEventListener('blur', applyManualSY);
   }
 
-  // ---- Wire Add Event button (column) ----
+  // ---- Wire Add Event button ----
   const btnAddEvt = document.getElementById('btn-sanctions-add-event');
   if (btnAddEvt) {
     btnAddEvt.addEventListener('click', () => {
       const sy = getSY(); const sem = getSem();
-      if (!sy || !sem) { alert('Please select (or type) a School Year and pick a Semester first.'); return; }
-      const name = prompt('Enter event name (e.g. General Assembly, Pasiuna, Parade):');
+      if (!sy || !sem) { alert('Please select a School Year and pick a Semester first.'); return; }
+      const name = prompt('Enter event name:');
       if (!name || !name.trim()) return;
       const ledger = loadLedger(sy, sem);
       ledger.events.push({ id: uid(), name: name.trim().toUpperCase() });
@@ -3593,160 +3606,29 @@ function populateProjectSchoolYearSelect() {
   if (btnAddStu) {
     btnAddStu.addEventListener('click', () => {
       const sy = getSY(); const sem = getSem();
-      if (!sy || !sem) { alert('Please select (or type) a School Year and pick a Semester first.'); return; }
+      if (!sy || !sem) { alert('Please select a School Year and pick a Semester first.'); return; }
+      
+      const yearFilter = getYearLevelFilter();
+      const sectionFilter = getSectionFilter();
+      
+      const chosenYear = yearFilter === 'all' ? '1st Year' : yearFilter;
+      const chosenSection = sectionFilter === 'all' ? 'A' : sectionFilter;
+
       const ledger = loadLedger(sy, sem);
-      ledger.students.push({ id: uid(), name: 'New Student', attendance: {}, paid: false });
+      ledger.students.push({
+        id: uid(),
+        name: 'New Student',
+        yearLevel: chosenYear,
+        section: chosenSection,
+        attendance: {},
+        paid: false
+      });
       saveLedger(sy, sem, ledger);
       renderSanctionsTable();
     });
   }
 
-  // ---- Wire Excel/CSV Import ----
-  const excelInput = document.getElementById('sanctions-excel-file');
-  if (excelInput) {
-    excelInput.addEventListener('change', (e) => {
-      const sy = getSY(); const sem = getSem();
-      if (!sy || !sem) {
-        alert('Please select (or type) a School Year and pick a Semester first.');
-        excelInput.value = '';
-        return;
-      }
 
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      const ext = file.name.split('.').pop().toLowerCase();
-
-      reader.onload = (evt) => {
-        try {
-          let importedStudents = [];
-          if (ext === 'csv') {
-            const text = evt.target.result;
-            const parsed = Papa.parse(text, { header: false, skipEmptyLines: true });
-            importedStudents = extractStudentsFromRows(parsed.data);
-          } else {
-            // xlsx / xls
-            const data = new Uint8Array(evt.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-            importedStudents = extractStudentsFromRows(jsonData);
-          }
-
-          if (importedStudents.length === 0) {
-            alert('No student names found. Please make sure the Excel file has a column for names (e.g., "Full Name", "Name", or "Student Name").');
-          } else {
-            const ledger = loadLedger(sy, sem);
-            // Append or replace? Let's append new names while avoiding duplicates
-            const existingNames = new Set(ledger.students.map(s => s.name.toLowerCase()));
-            let addedCount = 0;
-            importedStudents.forEach(stu => {
-              if (!existingNames.has(stu.name.toLowerCase())) {
-                ledger.students.push({
-                  id: uid(),
-                  name: stu.name,
-                  attendance: {},
-                  paid: false
-                });
-                addedCount++;
-              }
-            });
-            saveLedger(sy, sem, ledger);
-            renderSanctionsTable();
-            alert(`Successfully imported ${addedCount} new student(s) from Excel!`);
-          }
-        } catch (error) {
-          console.error(error);
-          alert('Failed to parse Excel file. Please ensure it is a valid format.');
-        }
-        excelInput.value = ''; // Reset input
-      };
-
-      if (ext === 'csv') {
-        reader.readAsText(file);
-      } else {
-        reader.readAsArrayBuffer(file);
-      }
-    });
-  }
-
-  // Parse table rows and find columns for name, year level, section
-  function extractStudentsFromRows(rows) {
-    if (!rows || rows.length === 0) return [];
-    
-    // Find headers or guess column indexes
-    let nameIdx = -1;
-    let yearIdx = -1;
-    let sectionIdx = -1;
-
-    // Search the first few rows to find where headers are
-    const searchLimit = Math.min(rows.length, 5);
-    for (let r = 0; r < searchLimit; r++) {
-      const row = rows[r];
-      if (!row) continue;
-      for (let c = 0; c < row.length; c++) {
-        const val = String(row[c] || '').toLowerCase().trim();
-        if (val.includes('name') || val.includes('student') || val.includes('fullname') || val.includes('full name')) {
-          nameIdx = c;
-        }
-        if (val.includes('year') || val.includes('level') || val.includes('yr')) {
-          yearIdx = c;
-        }
-        if (val.includes('section') || val.includes('sec')) {
-          sectionIdx = c;
-        }
-      }
-      if (nameIdx !== -1) {
-        // Headers found, delete headers up to this row index
-        rows.splice(0, r + 1);
-        break;
-      }
-    }
-
-    // Default to column 0 if no header found
-    if (nameIdx === -1) nameIdx = 0;
-
-    const list = [];
-    rows.forEach(row => {
-      if (!row || !row[nameIdx]) return;
-      const name = String(row[nameIdx]).trim();
-      if (!name || name.toLowerCase() === 'name' || name.toLowerCase().includes('student list')) return;
-      
-      let year = '';
-      if (yearIdx !== -1 && row[yearIdx]) {
-        year = String(row[yearIdx]).trim();
-      }
-      let section = '';
-      if (sectionIdx !== -1 && row[sectionIdx]) {
-        section = String(row[sectionIdx]).trim();
-      }
-
-      // Format name to show e.g., "John Doe (3rd Year - A)" if year/section are present
-      let displayName = name;
-      const details = [];
-      if (year) details.push(year);
-      if (section) details.push(section);
-      
-      if (details.length > 0) {
-        displayName += ` (${details.join(' - ')})`;
-      }
-
-      list.push({ name: displayName });
-    });
-
-    return list;
-  }
-
-  // ---- Show sanctions button only for auditors ----
-  function updateSanctionsButtonVisibility() {
-    const btn = document.getElementById('btn-sanctions-view');
-    if (!btn) return;
-    const ok = appState.currentUser &&
-      (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
-    btn.classList.toggle('hide', !ok);
-  }
 
   initDatabase().then(() => {
     checkExistingSession();
