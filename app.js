@@ -3667,18 +3667,26 @@ function populateProjectSchoolYearSelect() {
       const sy = getSY(); const sem = getSem();
       if (!sy || !sem) { alert('Please select a School Year and pick a Semester first.'); return; }
       
+      const name = prompt('Enter Student Full Name:');
+      if (!name || !name.trim()) return;
+
       const yearFilter = getYearLevelFilter();
       const sectionFilter = getSectionFilter();
-      
-      const chosenYear = yearFilter === 'all' ? '1st Year' : yearFilter;
-      const chosenSection = sectionFilter === 'all' ? 'A' : sectionFilter;
+
+      let chosenYear = yearFilter === 'all' ? '1st Year' : yearFilter;
+      chosenYear = prompt('Enter Year Level (1st Year, 2nd Year, 3rd Year, 4th Year):', chosenYear);
+      if (!chosenYear) return;
+
+      let chosenSection = sectionFilter === 'all' ? 'A' : sectionFilter;
+      chosenSection = prompt('Enter Section (e.g. A, B, C):', chosenSection);
+      if (!chosenSection) return;
 
       const ledger = loadLedger(sy, sem);
       ledger.students.push({
         id: uid(),
-        name: 'New Student',
-        yearLevel: chosenYear,
-        section: chosenSection,
+        name: name.trim(),
+        yearLevel: chosenYear.trim(),
+        section: chosenSection.trim().toUpperCase(),
         attendance: {},
         paid: false
       });
@@ -3726,29 +3734,23 @@ function populateProjectSchoolYearSelect() {
             const yearFilter = getYearLevelFilter();
             const sectionFilter = getSectionFilter();
 
-            if (yearFilter === 'all' || sectionFilter === 'all') {
-              alert('Please select a specific Year Level and Section in the dropdowns first before importing. This ensures you only import the matching group.');
-              excelInput.value = '';
-              return;
-            }
-
             const ledger = loadLedger(sy, sem);
             const existingNames = new Set(ledger.students.map(s => s.name.toLowerCase()));
             let addedCount = 0;
             let skippedCount = 0;
 
             importedStudents.forEach(stu => {
-              // Ensure the student matches the selected year and section
-              const matchYear = stu.yearLevel === yearFilter;
-              const matchSec = stu.section.toUpperCase().trim() === sectionFilter.toUpperCase().trim();
+              // Only filter if the screen dropdowns are set to a specific value
+              const matchYear = yearFilter === 'all' || stu.yearLevel === yearFilter;
+              const matchSec = sectionFilter === 'all' || stu.section.toUpperCase().trim() === sectionFilter.toUpperCase().trim();
 
               if (matchYear && matchSec) {
                 if (!existingNames.has(stu.name.toLowerCase())) {
                   ledger.students.push({
                     id: uid(),
                     name: stu.name,
-                    yearLevel: stu.yearLevel,
-                    section: stu.section,
+                    yearLevel: stu.yearLevel || '1st Year',
+                    section: stu.section || 'A',
                     attendance: {},
                     paid: false
                   });
@@ -3761,7 +3763,7 @@ function populateProjectSchoolYearSelect() {
 
             saveLedger(sy, sem, ledger);
             renderSanctionsTable();
-            alert(`Import complete!\n- Added ${addedCount} student(s) to ${yearFilter} - Section ${sectionFilter}.\n- Skipped ${skippedCount} student(s) belonging to other years/sections.`);
+            alert(`Import complete!\n- Added ${addedCount} student(s) to ledger.\n- Skipped ${skippedCount} student(s) due to active filters.`);
           }
         } catch (error) {
           console.error(error);
