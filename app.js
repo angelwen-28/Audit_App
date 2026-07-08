@@ -1,4 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+﻿import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
 window.addEventListener('error', (e) => {
   alert('JavaScript Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
@@ -3133,87 +3133,115 @@ function populateProjectSchoolYearSelect() {
 
 
   // =====================================================================
-  // 16b. Sanctions & Compliance Ledger — Full-Page Pivot Table
+  // 16b. Sanctions & Compliance Ledger — Standalone Pivot Table
+  //      Events are manually added here (separate from audit projects).
+  //      Data stored per School Year + Semester in localStorage.
+  //
+  //  Ledger data shape per key `sanctions_ledger_${sy}_${sem}`:
+  //  {
+  //    events: [ { id: 'uuid', name: 'Event Name' }, ... ],
+  //    students: [ { id: 'uuid', name: 'Full Name',
+  //                  attendance: { eventId: 'whole'|'half'|'absent' },
+  //                  paid: false }, ... ]
+  //  }
   // =====================================================================
 
-  const SANCTIONS_KEY = (sy, sem) => `sanctions_ledger_${sy}_${sem}`;
-  const ATT_VALUES = { whole: 0, half: 25, absent: 50 };
+  const SANCTIONS_KEY  = (sy, sem) => `sanctions_ledger_${sy}_${sem}`;
+  const ATT_VALUES     = { whole: 0, half: 25, absent: 50 };
+  const uid            = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-  // Helper: get all unique SYs from events
-  function getSanctionsSYList() {
-    const sySet = new Set(appState.events.map(e => e.schoolYear).filter(Boolean));
-    return [...sySet].sort().reverse();
-  }
-
-  // Helper: get events for a given SY + semester
-  function getSanctionsEvents(sy, sem) {
-    return appState.events.filter(e =>
-      e.schoolYear === sy && String(e.semester) === String(sem)
-    );
-  }
-
-  // Load ledger data from localStorage
-  function loadSanctionsData(sy, sem) {
+  // ---- Load / Save ----
+  function loadLedger(sy, sem) {
     try {
-      return JSON.parse(localStorage.getItem(SANCTIONS_KEY(sy, sem))) || [];
-    } catch { return []; }
+      const raw = JSON.parse(localStorage.getItem(SANCTIONS_KEY(sy, sem)));
+      if (raw && Array.isArray(raw.events) && Array.isArray(raw.students)) return raw;
+    } catch { /* fall through */ }
+    return { events: [], students: [] };
   }
 
-  // Save ledger data
-  function saveSanctionsData(sy, sem, rows) {
-    localStorage.setItem(SANCTIONS_KEY(sy, sem), JSON.stringify(rows));
+  function saveLedger(sy, sem, ledger) {
+    localStorage.setItem(SANCTIONS_KEY(sy, sem), JSON.stringify(ledger));
   }
 
-  // Select / show the sanctions view (hide all other panels)
+  // ---- Current SY/Sem from dropdowns ----
+  function getSY()  { return ((document.getElementById('sanctions-sy-select')  || {}).value || '').trim(); }
+  function getSem() { return ((document.getElementById('sanctions-sem-select') || {}).value || '').trim(); }
+
+  // Populate SY dropdown from all ledger keys stored in localStorage
+  function populateSanctionsSYDropdown() {
+    const sel = document.getElementById('sanctions-sy-select');
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">-- Select S-Y --</option>';
+
+    // Collect all SYs from localStorage keys
+    const sySet = new Set();
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('sanctions_ledger_')) {
+        // key format: sanctions_ledger_{sy}_{sem}
+        const parts = k.replace('sanctions_ledger_', '').split('_');
+        // sy is like "2025-2026" which contains a dash, sem is "1" or "2"
+        // Last part is semester, everything before is SY
+        if (parts.length >= 2) {
+          const sem = parts[parts.length - 1];
+          const sy  = parts.slice(0, parts.length - 1).join('_');
+          if (sy) sySet.add(sy);
+        }
+      }
+    }
+    // Also add the manual input value if present
+    const manualSY = ((document.getElementById('sanctions-sy-manual') || {}).value || '').trim();
+    if (manualSY) sySet.add(manualSY);
+
+    const syList = [...sySet].sort().reverse();
+    if (syList.length === 0) {
+      const opt = document.createElement('option');
+      opt.disabled = true;
+      opt.textContent = '(Type a school year below and add events)';
+      sel.appendChild(opt);
+    } else {
+      syList.forEach(sy => {
+        const opt = document.createElement('option');
+        opt.value = sy;
+        opt.textContent = `S-Y ${sy}`;
+        sel.appendChild(opt);
+      });
+    }
+    if (prev && syList.includes(prev)) sel.value = prev;
+  }
+
+  // ---- Select / show the sanctions view ----
   function selectSanctionsView() {
-    // Hide all other panels
-    if (el.detailContent)          el.detailContent.classList.add('hide');
-    if (el.detailEmptyState)       el.detailEmptyState.classList.add('hide');
-    const overallView = document.getElementById('overall-dashboard-view');
-    if (overallView)               overallView.classList.add('hide');
+    if (el.detailContent)    el.detailContent.classList.add('hide');
+    if (el.detailEmptyState) el.detailEmptyState.classList.add('hide');
+    const ov = document.getElementById('overall-dashboard-view');
+    if (ov) ov.classList.add('hide');
 
     const sv = document.getElementById('sanctions-view');
     if (sv) sv.classList.remove('hide');
 
-    // Mark sidebar button active
     const btnSV = document.getElementById('btn-sanctions-view');
     if (btnSV) btnSV.classList.add('active-sanctions');
     if (el.btnOverallDashboard) el.btnOverallDashboard.classList.remove('active');
 
-    // Deselect any active event card
     document.querySelectorAll('.event-card.active').forEach(c => c.classList.remove('active'));
     appState.activeEventId = null;
 
-    // Populate SY dropdown from events
     populateSanctionsSYDropdown();
   }
 
-  // Populate the SY select options
-  function populateSanctionsSYDropdown() {
-    const sel = document.getElementById('sanctions-sy-select');
-    if (!sel) return;
-    const current = sel.value;
-    sel.innerHTML = '<option value="">-- Select S-Y --</option>';
-    getSanctionsSYList().forEach(sy => {
-      const opt = document.createElement('option');
-      opt.value = sy;
-      opt.textContent = `S-Y ${sy}`;
-      sel.appendChild(opt);
-    });
-    if (current && getSanctionsSYList().includes(current)) sel.value = current;
-  }
-
-  // Main render: build the pivot table
+  // ---- Main render ----
   function renderSanctionsTable() {
-    const sy  = (document.getElementById('sanctions-sy-select')  || {}).value || '';
-    const sem = (document.getElementById('sanctions-sem-select') || {}).value || '';
+    const sy  = getSY();
+    const sem = getSem();
 
-    const emptyState    = document.getElementById('sanctions-empty-state');
-    const tableWrapper  = document.getElementById('sanctions-table-wrapper');
-    const summaryRow    = document.getElementById('sanctions-summary-row');
-    const thead         = document.getElementById('sanctions-table-head');
-    const tbody         = document.getElementById('sanctions-table-body');
-    const tfoot         = document.getElementById('sanctions-table-foot');
+    const emptyState   = document.getElementById('sanctions-empty-state');
+    const tableWrapper = document.getElementById('sanctions-table-wrapper');
+    const summaryRow   = document.getElementById('sanctions-summary-row');
+    const thead        = document.getElementById('sanctions-table-head');
+    const tbody        = document.getElementById('sanctions-table-body');
+    const tfoot        = document.getElementById('sanctions-table-foot');
 
     if (!sy || !sem) {
       if (emptyState)   emptyState.style.display = '';
@@ -3226,14 +3254,26 @@ function populateProjectSchoolYearSelect() {
     if (tableWrapper) tableWrapper.classList.remove('hide');
     if (summaryRow)   summaryRow.style.display = '';
 
-    const events  = getSanctionsEvents(sy, sem);
-    let   rows    = loadSanctionsData(sy, sem);
+    const ledger   = loadLedger(sy, sem);
+    const events   = ledger.events   || [];
+    const students = ledger.students || [];
 
-    // ---- Build HEADER ----
+    const isAuditor = appState.currentUser &&
+      (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+
+    // ---- helpers ----
+    function calcTotal(stu) {
+      return events.reduce((s, ev) => s + ATT_VALUES[(stu.attendance || {})[ev.id] || 'whole'], 0);
+    }
+    function persist() { saveLedger(sy, sem, ledger); }
+    function rerender() { persist(); renderSanctionsTable(); }
+
+    // ===================== HEADER =====================
     thead.innerHTML = '';
 
-    // Row 1: FULL NAME | colspan=events EVENTS | TOTAL | PAID | (del)
+    // Row 1
     const tr1 = document.createElement('tr');
+
     const thName = document.createElement('th');
     thName.className = 'col-name';
     thName.rowSpan = 2;
@@ -3241,11 +3281,17 @@ function populateProjectSchoolYearSelect() {
     tr1.appendChild(thName);
 
     if (events.length > 0) {
-      const thEvtGroup = document.createElement('th');
-      thEvtGroup.className = 'col-events-group';
-      thEvtGroup.colSpan = events.length;
-      thEvtGroup.textContent = 'EVENTS';
-      tr1.appendChild(thEvtGroup);
+      const thGrp = document.createElement('th');
+      thGrp.className = 'col-events-group';
+      thGrp.colSpan = events.length + (isAuditor ? 1 : 0); // +1 for add-col cell
+      thGrp.textContent = 'EVENTS';
+      tr1.appendChild(thGrp);
+    } else if (isAuditor) {
+      // placeholder span for the add-col header
+      const thGrp = document.createElement('th');
+      thGrp.className = 'col-events-group';
+      thGrp.textContent = 'EVENTS';
+      tr1.appendChild(thGrp);
     }
 
     const thTotal = document.createElement('th');
@@ -3260,251 +3306,308 @@ function populateProjectSchoolYearSelect() {
     thPaid.textContent = 'PAID';
     tr1.appendChild(thPaid);
 
-    const thDel = document.createElement('th');
-    thDel.rowSpan = 2;
-    thDel.textContent = '';
-    tr1.appendChild(thDel);
-
+    if (isAuditor) {
+      const thDel = document.createElement('th');
+      thDel.rowSpan = 2;
+      thDel.textContent = '';
+      tr1.appendChild(thDel);
+    }
     thead.appendChild(tr1);
 
-    // Row 2: individual event names
+    // Row 2: individual event name headers (editable + deletable)
     const tr2 = document.createElement('tr');
-    events.forEach(evt => {
+    events.forEach((ev, eIdx) => {
       const th = document.createElement('th');
       th.className = 'col-event';
-      th.textContent = evt.name;
+      th.style.position = 'relative';
+      if (isAuditor) {
+        th.innerHTML = `
+          <div style="display:flex;align-items:center;gap:4px;justify-content:center;">
+            <input type="text" value="${escapeAttr(ev.name)}"
+              style="background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.3);color:#fff;font-weight:700;font-size:0.72rem;text-align:center;width:80px;font-family:var(--font-primary);outline:none;text-transform:uppercase;letter-spacing:0.04em;"
+              class="sanc-evname-input" data-eidx="${eIdx}" title="Click to rename">
+            <button class="btn-sanctions-del sanc-evdel" data-eidx="${eIdx}" title="Delete event column" style="color:#fca5a5;font-size:0.7rem;padding:1px 3px;">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>`;
+        th.querySelector('.sanc-evname-input').addEventListener('change', e => {
+          ledger.events[eIdx].name = e.target.value.trim() || ledger.events[eIdx].name;
+          persist();
+        });
+        th.querySelector('.sanc-evdel').addEventListener('click', () => {
+          if (!confirm(`Delete event column "${ev.name}"? Attendance data for this event will be removed.`)) return;
+          ledger.events.splice(eIdx, 1);
+          ledger.students.forEach(s => { if (s.attendance) delete s.attendance[ev.id]; });
+          rerender();
+        });
+      } else {
+        th.textContent = ev.name;
+      }
       tr2.appendChild(th);
     });
+
+    // "+ Add Event" button column header (auditor only)
+    if (isAuditor) {
+      const thAdd = document.createElement('th');
+      thAdd.className = 'col-event';
+      thAdd.style.background = 'rgba(249,115,22,0.15)';
+      thAdd.style.cursor = 'pointer';
+      thAdd.title = 'Add a new event column';
+      thAdd.innerHTML = `<span style="font-size:1.1rem;color:var(--primary);">＋</span>`;
+      thAdd.addEventListener('click', () => {
+        const name = prompt('Enter event name (e.g. General Assembly):');
+        if (!name || !name.trim()) return;
+        ledger.events.push({ id: uid(), name: name.trim().toUpperCase() });
+        rerender();
+      });
+      tr2.appendChild(thAdd);
+    }
+
     thead.appendChild(tr2);
 
-    // ---- Build BODY ----
+    // ===================== BODY =====================
     tbody.innerHTML = '';
 
-    const isAuditor = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
-
-    function calcRowTotal(row) {
-      return events.reduce((sum, evt) => {
-        const status = (row.attendance || {})[evt.id] || 'whole';
-        return sum + ATT_VALUES[status];
-      }, 0);
-    }
-
-    function rerender() {
-      saveSanctionsData(sy, sem, rows);
-      renderSanctionsTable();
-    }
-
-    rows.forEach((row, rIdx) => {
+    students.forEach((stu, sIdx) => {
       const tr = document.createElement('tr');
 
       // Name cell
       const tdName = document.createElement('td');
       tdName.className = 'cell-name';
-      const nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.className = 'sanctions-name-input';
-      nameInput.value = row.name || '';
-      nameInput.placeholder = 'Student Name';
+      const nameIn = document.createElement('input');
+      nameIn.type = 'text';
+      nameIn.className = 'sanctions-name-input';
+      nameIn.value = stu.name || '';
+      nameIn.placeholder = 'Student Name';
       if (isAuditor) {
-        nameInput.addEventListener('change', e => {
-          rows[rIdx].name = e.target.value.trim();
-          saveSanctionsData(sy, sem, rows);
+        nameIn.addEventListener('change', e => {
+          ledger.students[sIdx].name = e.target.value.trim();
+          persist();
         });
       } else {
-        nameInput.readOnly = true;
+        nameIn.readOnly = true;
       }
-      tdName.appendChild(nameInput);
+      tdName.appendChild(nameIn);
       tr.appendChild(tdName);
 
-      // One cell per event (attendance dropdown → shows amount)
-      events.forEach(evt => {
+      // One attendance cell per event
+      events.forEach(ev => {
         const tdAtt = document.createElement('td');
         tdAtt.className = 'cell-att';
-        if (!row.attendance) row.attendance = {};
-        const currentStatus = row.attendance[evt.id] || 'whole';
-        const amount = ATT_VALUES[currentStatus];
+        if (!stu.attendance) stu.attendance = {};
+        const cur    = stu.attendance[ev.id] || 'whole';
+        const amt    = ATT_VALUES[cur];
 
         if (isAuditor) {
-          // Dropdown showing status
           const sel = document.createElement('select');
-          sel.className = `sanctions-att-select att-${currentStatus}`;
-          sel.title = `Attendance for ${evt.name}`;
+          sel.className = `sanctions-att-select att-${cur}`;
           [
-            { value: 'whole',  label: '₱0 — Whole Day' },
-            { value: 'half',   label: '₱25 — Half Day' },
-            { value: 'absent', label: '₱50 — Absent'   }
-          ].forEach(opt => {
-            const o = document.createElement('option');
-            o.value = opt.value;
-            o.textContent = opt.label;
-            if (opt.value === currentStatus) o.selected = true;
-            sel.appendChild(o);
+            { value: 'whole',  label: '₱0 — Whole Day'  },
+            { value: 'half',   label: '₱25 — Half Day'  },
+            { value: 'absent', label: '₱50 — Absent'    }
+          ].forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.value;
+            opt.textContent = o.label;
+            if (o.value === cur) opt.selected = true;
+            sel.appendChild(opt);
           });
           sel.addEventListener('change', e => {
-            rows[rIdx].attendance[evt.id] = e.target.value;
-            saveSanctionsData(sy, sem, rows);
-            // Update total cell without full re-render
-            const newTotal = calcRowTotal(rows[rIdx]);
-            const totalCell = tr.querySelector('.cell-total');
-            if (totalCell) totalCell.textContent = `₱${newTotal}`;
-            // Update footer
-            renderSanctionsFoot(tfoot, events, rows);
-            updateSanctionsSummary(events, rows);
-            // Re-colour the select
+            ledger.students[sIdx].attendance[ev.id] = e.target.value;
+            persist();
+            const newTotal = calcTotal(ledger.students[sIdx]);
+            const tc = tr.querySelector('.cell-total');
+            if (tc) tc.textContent = `₱${newTotal}`;
+            renderSanctionsFoot(tfoot, events, students);
+            updateSanctionsSummary(events, students);
             e.target.className = `sanctions-att-select att-${e.target.value}`;
           });
           tdAtt.appendChild(sel);
         } else {
-          // Read-only: just show the amount
-          const amtCls = amount === 0 ? 'amt-zero' : amount === 25 ? 'amt-half' : 'amt-absent';
-          tdAtt.innerHTML = `<span class="att-amount ${amtCls}">₱${amount}</span>`;
+          const amtCls = amt === 0 ? 'amt-zero' : amt === 25 ? 'amt-half' : 'amt-absent';
+          tdAtt.innerHTML = `<span class="att-amount ${amtCls}">₱${amt}</span>`;
         }
-
         tr.appendChild(tdAtt);
       });
+
+      // Blank cell under the "+ Add Event" column (auditor only)
+      if (isAuditor) {
+        const tdBlank = document.createElement('td');
+        tdBlank.style.background = 'rgba(249,115,22,0.04)';
+        tr.appendChild(tdBlank);
+      }
 
       // TOTAL cell
       const tdTotal = document.createElement('td');
       tdTotal.className = 'cell-total';
-      tdTotal.textContent = `₱${calcRowTotal(row)}`;
+      tdTotal.textContent = `₱${calcTotal(stu)}`;
       tr.appendChild(tdTotal);
 
-      // PAID checkbox (sanction paid)
+      // PAID checkbox
       const tdPaid = document.createElement('td');
       tdPaid.className = 'cell-paid';
-      const chkPaid = document.createElement('input');
-      chkPaid.type = 'checkbox';
-      chkPaid.className = 'sanctions-paid-check';
-      chkPaid.checked = !!row.paid;
-      if (!isAuditor) chkPaid.disabled = true;
-      chkPaid.addEventListener('change', e => {
-        rows[rIdx].paid = e.target.checked;
-        saveSanctionsData(sy, sem, rows);
-        updateSanctionsSummary(events, rows);
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.className = 'sanctions-paid-check';
+      chk.checked = !!stu.paid;
+      if (!isAuditor) chk.disabled = true;
+      chk.addEventListener('change', e => {
+        ledger.students[sIdx].paid = e.target.checked;
+        persist();
+        updateSanctionsSummary(events, students);
       });
-      tdPaid.appendChild(chkPaid);
+      tdPaid.appendChild(chk);
       tr.appendChild(tdPaid);
 
-      // Delete button
-      const tdDel = document.createElement('td');
+      // Delete student row
       if (isAuditor) {
+        const tdDel = document.createElement('td');
         const btnDel = document.createElement('button');
         btnDel.className = 'btn-sanctions-del';
         btnDel.title = 'Remove student';
         btnDel.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
         btnDel.addEventListener('click', () => {
-          rows.splice(rIdx, 1);
+          ledger.students.splice(sIdx, 1);
           rerender();
         });
         tdDel.appendChild(btnDel);
+        tr.appendChild(tdDel);
       }
-      tr.appendChild(tdDel);
 
       tbody.appendChild(tr);
     });
 
-    // Empty message
-    if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="${events.length + 4}" style="text-align:center;padding:32px;color:var(--text-muted);font-weight:500;">No students yet. Click <strong>Add Student</strong> to get started.</td></tr>`;
+    if (students.length === 0) {
+      const cols = events.length + (isAuditor ? 1 : 0) + 3;
+      tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;padding:36px;color:var(--text-muted);font-weight:500;">
+        No students yet${events.length === 0 ? ' — add events first using the <strong>+ Add Event</strong> button above' : ' — click <strong>Add Student</strong> to get started'}.
+      </td></tr>`;
     }
 
-    // ---- FOOTER (column totals) ----
-    renderSanctionsFoot(tfoot, events, rows);
-
-    // ---- SUMMARY CARDS ----
-    updateSanctionsSummary(events, rows);
+    renderSanctionsFoot(tfoot, events, students, isAuditor);
+    updateSanctionsSummary(events, students);
   }
 
-  // Render the footer totals row
-  function renderSanctionsFoot(tfoot, events, rows) {
+  // ---- Footer totals ----
+  function renderSanctionsFoot(tfoot, events, students, isAuditor) {
     tfoot.innerHTML = '';
+    if (events.length === 0 && students.length === 0) return;
     const tr = document.createElement('tr');
 
-    const tdLabel = document.createElement('td');
-    tdLabel.className = 'foot-name';
-    tdLabel.textContent = 'COLUMN TOTALS';
-    tr.appendChild(tdLabel);
+    const tdL = document.createElement('td');
+    tdL.className = 'foot-name';
+    tdL.textContent = 'COLUMN TOTALS';
+    tr.appendChild(tdL);
 
-    events.forEach(evt => {
-      const colSum = rows.reduce((sum, row) => {
-        const status = (row.attendance || {})[evt.id] || 'whole';
-        return sum + ATT_VALUES[status];
-      }, 0);
+    events.forEach(ev => {
+      const sum = students.reduce((s, stu) => s + ATT_VALUES[(stu.attendance || {})[ev.id] || 'whole'], 0);
       const td = document.createElement('td');
-      td.textContent = `₱${colSum}`;
+      td.textContent = `₱${sum}`;
       tr.appendChild(td);
     });
 
-    const grandTotal = rows.reduce((sum, row) => {
-      return sum + events.reduce((s, evt) => {
-        const status = (row.attendance || {})[evt.id] || 'whole';
-        return s + ATT_VALUES[status];
-      }, 0);
-    }, 0);
+    if (isAuditor) {
+      const tdBlank = document.createElement('td'); tdBlank.textContent = '';
+      tr.appendChild(tdBlank);
+    }
+
+    const grand = students.reduce((s, stu) =>
+      s + events.reduce((ss, ev) => ss + ATT_VALUES[(stu.attendance || {})[ev.id] || 'whole'], 0), 0);
     const tdGrand = document.createElement('td');
-    tdGrand.textContent = `₱${grandTotal}`;
+    tdGrand.textContent = `₱${grand}`;
     tr.appendChild(tdGrand);
 
-    const tdPaid = document.createElement('td'); tdPaid.textContent = '';
-    tr.appendChild(tdPaid);
-    const tdDel = document.createElement('td'); tdDel.textContent = '';
-    tr.appendChild(tdDel);
-
+    const tdP = document.createElement('td'); tdP.textContent = '';
+    tr.appendChild(tdP);
+    if (isAuditor) {
+      const tdD = document.createElement('td'); tdD.textContent = '';
+      tr.appendChild(tdD);
+    }
     tfoot.appendChild(tr);
   }
 
-  // Update summary stat cards
-  function updateSanctionsSummary(events, rows) {
-    const totalStudents = rows.length;
-    const totalEvents   = events.length;
-    const totalAmount   = rows.reduce((sum, row) => {
-      return sum + events.reduce((s, evt) => {
-        const status = (row.attendance || {})[evt.id] || 'whole';
-        return s + ATT_VALUES[status];
-      }, 0);
-    }, 0);
-    const paidCount = rows.filter(r => r.paid).length;
-
-    const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    s('sanctions-stat-students', totalStudents);
-    s('sanctions-stat-events',   totalEvents);
-    s('sanctions-stat-total',    `₱${totalAmount}`);
-    s('sanctions-stat-paid',     `${paidCount} / ${totalStudents}`);
+  // ---- Summary cards ----
+  function updateSanctionsSummary(events, students) {
+    const total = students.reduce((s, stu) =>
+      s + events.reduce((ss, ev) => ss + ATT_VALUES[(stu.attendance || {})[ev.id] || 'whole'], 0), 0);
+    const paid  = students.filter(s => s.paid).length;
+    const g = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    g('sanctions-stat-students', students.length);
+    g('sanctions-stat-events',   events.length);
+    g('sanctions-stat-total',    `₱${total}`);
+    g('sanctions-stat-paid',     `${paid} / ${students.length}`);
   }
 
-  // Wire sidebar Sanctions button
+  // ---- Wire sidebar Sanctions button ----
   const btnSanctionsView = document.getElementById('btn-sanctions-view');
-  if (btnSanctionsView) {
-    btnSanctionsView.addEventListener('click', selectSanctionsView);
-  }
+  if (btnSanctionsView) btnSanctionsView.addEventListener('click', selectSanctionsView);
 
-  // Wire SY / Semester dropdowns
+  // ---- Wire SY / Semester dropdowns ----
   const sySel  = document.getElementById('sanctions-sy-select');
   const semSel = document.getElementById('sanctions-sem-select');
-  if (sySel)  sySel.addEventListener('change',  renderSanctionsTable);
+  if (sySel)  sySel.addEventListener('change', renderSanctionsTable);
   if (semSel) semSel.addEventListener('change', renderSanctionsTable);
 
-  // Wire Add Student button
-  const btnAddSanctionStudent = document.getElementById('btn-sanctions-add-student');
-  if (btnAddSanctionStudent) {
-    btnAddSanctionStudent.addEventListener('click', () => {
-      const sy  = (document.getElementById('sanctions-sy-select')  || {}).value || '';
-      const sem = (document.getElementById('sanctions-sem-select') || {}).value || '';
-      if (!sy || !sem) { alert('Please select a School Year and Semester first.'); return; }
-      const rows = loadSanctionsData(sy, sem);
-      rows.push({ name: 'New Student', attendance: {}, paid: false });
-      saveSanctionsData(sy, sem, rows);
+  // ---- Wire manual SY input (Enter key or blur → add to dropdown & render) ----
+  const syManual = document.getElementById('sanctions-sy-manual');
+  if (syManual) {
+    const applyManualSY = () => {
+      const v = syManual.value.trim();
+      if (!v) return;
+      // Add to dropdown if not there, then select it
+      const sel = document.getElementById('sanctions-sy-select');
+      if (sel) {
+        let found = false;
+        for (const opt of sel.options) { if (opt.value === v) { found = true; break; } }
+        if (!found) {
+          const opt = document.createElement('option');
+          opt.value = v; opt.textContent = `S-Y ${v}`;
+          sel.appendChild(opt);
+        }
+        sel.value = v;
+        renderSanctionsTable();
+      }
+    };
+    syManual.addEventListener('keydown', e => { if (e.key === 'Enter') applyManualSY(); });
+    syManual.addEventListener('blur', applyManualSY);
+  }
+
+  // ---- Wire Add Event button (column) ----
+  const btnAddEvt = document.getElementById('btn-sanctions-add-event');
+  if (btnAddEvt) {
+    btnAddEvt.addEventListener('click', () => {
+      const sy = getSY(); const sem = getSem();
+      if (!sy || !sem) { alert('Please select (or type) a School Year and pick a Semester first.'); return; }
+      const name = prompt('Enter event name (e.g. General Assembly, Pasiuna, Parade):');
+      if (!name || !name.trim()) return;
+      const ledger = loadLedger(sy, sem);
+      ledger.events.push({ id: uid(), name: name.trim().toUpperCase() });
+      saveLedger(sy, sem, ledger);
+      populateSanctionsSYDropdown();
       renderSanctionsTable();
     });
   }
 
-  // Show sanctions button only for auditors
+  // ---- Wire Add Student button ----
+  const btnAddStu = document.getElementById('btn-sanctions-add-student');
+  if (btnAddStu) {
+    btnAddStu.addEventListener('click', () => {
+      const sy = getSY(); const sem = getSem();
+      if (!sy || !sem) { alert('Please select (or type) a School Year and pick a Semester first.'); return; }
+      const ledger = loadLedger(sy, sem);
+      ledger.students.push({ id: uid(), name: 'New Student', attendance: {}, paid: false });
+      saveLedger(sy, sem, ledger);
+      renderSanctionsTable();
+    });
+  }
+
+  // ---- Show sanctions button only for auditors ----
   function updateSanctionsButtonVisibility() {
     const btn = document.getElementById('btn-sanctions-view');
     if (!btn) return;
-    const isAuditor = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
-    if (isAuditor) btn.classList.remove('hide');
-    else           btn.classList.add('hide');
+    const ok = appState.currentUser &&
+      (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+    btn.classList.toggle('hide', !ok);
   }
 
   initDatabase().then(() => {
