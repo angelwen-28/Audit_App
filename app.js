@@ -3723,25 +3723,45 @@ function populateProjectSchoolYearSelect() {
           if (importedStudents.length === 0) {
             alert('No student names found in spreadsheet. Check header titles.');
           } else {
+            const yearFilter = getYearLevelFilter();
+            const sectionFilter = getSectionFilter();
+
+            if (yearFilter === 'all' || sectionFilter === 'all') {
+              alert('Please select a specific Year Level and Section in the dropdowns first before importing. This ensures you only import the matching group.');
+              excelInput.value = '';
+              return;
+            }
+
             const ledger = loadLedger(sy, sem);
             const existingNames = new Set(ledger.students.map(s => s.name.toLowerCase()));
             let addedCount = 0;
+            let skippedCount = 0;
+
             importedStudents.forEach(stu => {
-              if (!existingNames.has(stu.name.toLowerCase())) {
-                ledger.students.push({
-                  id: uid(),
-                  name: stu.name,
-                  yearLevel: stu.yearLevel || '1st Year',
-                  section: stu.section || 'A',
-                  attendance: {},
-                  paid: false
-                });
-                addedCount++;
+              // Ensure the student matches the selected year and section
+              const matchYear = stu.yearLevel === yearFilter;
+              const matchSec = stu.section.toUpperCase().trim() === sectionFilter.toUpperCase().trim();
+
+              if (matchYear && matchSec) {
+                if (!existingNames.has(stu.name.toLowerCase())) {
+                  ledger.students.push({
+                    id: uid(),
+                    name: stu.name,
+                    yearLevel: stu.yearLevel,
+                    section: stu.section,
+                    attendance: {},
+                    paid: false
+                  });
+                  addedCount++;
+                }
+              } else {
+                skippedCount++;
               }
             });
+
             saveLedger(sy, sem, ledger);
             renderSanctionsTable();
-            alert(`Successfully imported ${addedCount} student(s) grouped by Year Level and Section!`);
+            alert(`Import complete!\n- Added ${addedCount} student(s) to ${yearFilter} - Section ${sectionFilter}.\n- Skipped ${skippedCount} student(s) belonging to other years/sections.`);
           }
         } catch (error) {
           console.error(error);
