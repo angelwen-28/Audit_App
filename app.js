@@ -3175,6 +3175,9 @@ function populateProjectSchoolYearSelect() {
   // ---- Current SY/Sem from dropdowns ----
   function getSY()  { return ((document.getElementById('sanctions-sy-select')  || {}).value || '').trim(); }
   function getSem() { return ((document.getElementById('sanctions-sem-select') || {}).value || '').trim(); }
+  function getYearLevelFilter() { return ((document.getElementById('sanctions-year-level-select') || {}).value || 'all'); }
+  function getSectionFilter() { return ((document.getElementById('sanctions-section-select') || {}).value || 'all'); }
+
 
   // Populate SY dropdown from all ledger keys stored in localStorage
   function populateSanctionsSYDropdown() {
@@ -3218,6 +3221,33 @@ function populateProjectSchoolYearSelect() {
       });
     }
     if (prev && syList.includes(prev)) sel.value = prev;
+  }
+
+  // Update sections dropdown dynamically based on students in ledger
+  function updateSectionDropdownOptions(students) {
+    const sectionSelect = document.getElementById('sanctions-section-select');
+    if (!sectionSelect) return;
+    const prevVal = sectionSelect.value;
+    
+    // Collect all unique sections
+    const sections = new Set();
+    students.forEach(s => {
+      if (s.section) sections.add(s.section.toUpperCase().trim());
+    });
+    
+    const sectionList = [...sections].sort();
+    
+    sectionSelect.innerHTML = '<option value="all">All Sections</option>';
+    sectionList.forEach(sec => {
+      const opt = document.createElement('option');
+      opt.value = sec;
+      opt.textContent = `Section ${sec}`;
+      sectionSelect.appendChild(opt);
+    });
+    
+    if (prevVal && (prevVal === 'all' || sectionList.includes(prevVal))) {
+      sectionSelect.value = prevVal;
+    }
   }
 
   // ---- Select / show the sanctions view ----
