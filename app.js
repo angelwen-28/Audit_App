@@ -718,6 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
     overallNetBalance: document.getElementById('overall-net-balance'),
     overallKioskBalance: document.getElementById('overall-kiosk-balance'),
     kioskLedgerRows: document.getElementById('kiosk-ledger-rows'),
+    studentCompliancePanel: document.getElementById('student-compliance-panel'),
     
     // Project Summary Card
     projectName: document.getElementById('detail-project-name'),
@@ -1209,7 +1210,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Render the expense records
     renderExpenseList();
-    renderStudentCompliance(event.id);
+    
+    if (el.studentCompliancePanel) {
+      if (hasWriteAccess) {
+        el.studentCompliancePanel.classList.remove('hide');
+        renderStudentCompliance(event.id);
+      } else {
+        el.studentCompliancePanel.classList.add('hide');
+      }
+    }
   }
 
   function populateFinanceColumns(eventId) {
