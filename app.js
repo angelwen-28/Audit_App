@@ -3745,7 +3745,7 @@ function populateProjectSchoolYearSelect() {
           }
         } catch (error) {
           console.error(error);
-          alert('Failed to parse file.');
+          alert('Failed to parse file: ' + error.message + '\nVerify that the file is a valid Excel/CSV spreadsheet.');
         }
         excelInput.value = '';
       };
