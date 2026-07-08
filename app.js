@@ -3314,7 +3314,7 @@ function populateProjectSchoolYearSelect() {
 
     // ---- helpers ----
     function calcTotal(stu) {
-      return events.reduce((s, ev) => s + ATT_VALUES[(stu.attendance || {})[ev.id] || 'whole'], 0);
+      return events.reduce((s, ev) => s + parseFloat((stu.attendance || {})[ev.id] || 0), 0);
     }
     function persist() { saveLedger(sy, sem, ledger); }
     function rerender() { persist(); renderSanctionsTable(); }
@@ -3438,41 +3438,40 @@ function populateProjectSchoolYearSelect() {
       }
       tr.appendChild(tdName);
 
+      // Numeric event inputs
       events.forEach(ev => {
         const tdAtt = document.createElement('td');
         tdAtt.className = 'cell-att';
         if (!stu.attendance) stu.attendance = {};
-        const cur    = stu.attendance[ev.id] || 'whole';
-        const amt    = ATT_VALUES[cur];
+        const curAmt = parseFloat(stu.attendance[ev.id] || 0);
 
         if (isAuditor) {
-          const sel = document.createElement('select');
-          sel.className = `sanctions-att-select att-${cur}`;
-          [
-            { value: 'whole',  label: '₱0 — Whole Day'  },
-            { value: 'half',   label: '₱25 — Half Day'  },
-            { value: 'absent', label: '₱50 — Absent'    }
-          ].forEach(o => {
-            const opt = document.createElement('option');
-            opt.value = o.value;
-            opt.textContent = o.label;
-            if (o.value === cur) opt.selected = true;
-            sel.appendChild(opt);
-          });
-          sel.addEventListener('change', e => {
-            ledger.students[sIdx].attendance[ev.id] = e.target.value;
+          const numInput = document.createElement('input');
+          numInput.type = 'number';
+          numInput.min = '0';
+          numInput.step = 'any';
+          numInput.className = 'table-input text-center';
+          numInput.value = curAmt;
+          numInput.style.width = '70px';
+          numInput.style.fontWeight = '700';
+          numInput.style.fontSize = '0.9rem';
+
+          numInput.addEventListener('change', e => {
+            const val = parseFloat(e.target.value) || 0;
+            ledger.students[sIdx].attendance[ev.id] = val;
             persist();
+            
             const newTotal = calcTotal(ledger.students[sIdx]);
             const tc = tr.querySelector('.cell-total');
             if (tc) tc.textContent = `₱${newTotal}`;
+            
             renderSanctionsFoot(tfoot, events, students, isAuditor);
             updateSanctionsSummary(events, allStudents);
-            e.target.className = `sanctions-att-select att-${e.target.value}`;
           });
-          tdAtt.appendChild(sel);
+          tdAtt.appendChild(numInput);
         } else {
-          const amtCls = amt === 0 ? 'amt-zero' : amt === 25 ? 'amt-half' : 'amt-absent';
-          tdAtt.innerHTML = `<span class="att-amount ${amtCls}">₱${amt}</span>`;
+          const amtCls = curAmt === 0 ? 'amt-zero' : 'amt-absent';
+          tdAtt.innerHTML = `<span class="att-amount ${amtCls}">₱${curAmt}</span>`;
         }
         tr.appendChild(tdAtt);
       });
@@ -3542,7 +3541,7 @@ function populateProjectSchoolYearSelect() {
     tr.appendChild(tdL);
 
     events.forEach(ev => {
-      const sum = students.reduce((s, stu) => s + ATT_VALUES[(stu.attendance || {})[ev.id] || 'whole'], 0);
+      const sum = students.reduce((s, stu) => s + parseFloat((stu.attendance || {})[ev.id] || 0), 0);
       const td = document.createElement('td');
       td.textContent = `₱${sum}`;
       tr.appendChild(td);
@@ -3554,7 +3553,7 @@ function populateProjectSchoolYearSelect() {
     }
 
     const grand = students.reduce((s, stu) =>
-      s + events.reduce((ss, ev) => ss + ATT_VALUES[(stu.attendance || {})[ev.id] || 'whole'], 0), 0);
+      s + events.reduce((ss, ev) => ss + parseFloat((stu.attendance || {})[ev.id] || 0), 0), 0);
     const tdGrand = document.createElement('td');
     tdGrand.textContent = `₱${grand}`;
     tr.appendChild(tdGrand);
@@ -3571,7 +3570,7 @@ function populateProjectSchoolYearSelect() {
   // ---- Summary cards ----
   function updateSanctionsSummary(events, students) {
     const total = students.reduce((s, stu) =>
-      s + events.reduce((ss, ev) => ss + ATT_VALUES[(stu.attendance || {})[ev.id] || 'whole'], 0), 0);
+      s + events.reduce((ss, ev) => ss + parseFloat((stu.attendance || {})[ev.id] || 0), 0), 0);
     const paid  = students.filter(s => s.paid).length;
     const g = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     g('sanctions-stat-students', students.length);
