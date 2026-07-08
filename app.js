@@ -1,5 +1,9 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
+window.addEventListener('error', (e) => {
+  alert('JavaScript Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+});
+
 const supabaseUrl = (typeof import.meta !== 'undefined' && import.meta.env) ? (import.meta.env.VITE_SUPABASE_URL || '') : '';
 const supabaseAnonKey = (typeof import.meta !== 'undefined' && import.meta.env) ? (import.meta.env.VITE_SUPABASE_ANON_KEY || '') : '';
 
@@ -945,145 +949,155 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- 8. Event List Rendering (Sidebar) ---
+  // --- 8. Event List Rendering (Sidebar) ---
   function renderEventList() {
-    const searchQuery = appState.filters.search.toLowerCase();
-    const filteredEvents = appState.events.filter(evt => {
-      const matchesSearch = evt.name.toLowerCase().includes(searchQuery);
-      const matchesSemester = appState.filters.semester === 'all' || (evt.semester && evt.semester === appState.filters.semester);
-      const matchesYear = appState.filters.schoolYear === 'all' || (evt.schoolYear && evt.schoolYear === appState.filters.schoolYear);
-      return matchesSearch && matchesSemester && matchesYear;
-    });
-    
-    // Update live overall balance badge at the top of the sidebar (shows Kiosk Reserve balance)
-    el.navOverallBalance.textContent = `₱${formatMoney(appState.kioskBalance || 0)}`;
-    
-    // Toggle active styling on overall nav button
-    if (appState.activeEventId === 'overall') {
-      el.btnOverallDashboard.classList.add('active-overall');
-    } else {
-      el.btnOverallDashboard.classList.remove('active-overall');
-    }
-    
-    el.eventCount.textContent = filteredEvents.length;
-    el.eventList.innerHTML = '';
-    
-    if (filteredEvents.length === 0) {
-      el.eventList.innerHTML = `
-        <div class="expense-empty-state" style="padding: 30px 10px;">
-          <i class="fa-solid fa-folder-closed"></i>
-          <p>No active events found.</p>
-        </div>
-      `;
-      return;
-    }
-
-    // Group events by school year
-    const groups = {};
-    filteredEvents.forEach(evt => {
-      const sy = evt.schoolYear || 'Unknown S-Y';
-      if (!groups[sy]) {
-        groups[sy] = [];
-      }
-      groups[sy].push(evt);
-    });
-    
-    const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
-
-    // Sort school years descending (newest first)
-    const sortedSYs = Object.keys(groups).sort((a, b) => b.localeCompare(a));
-
-    sortedSYs.forEach(sy => {
-      const eventsInSY = groups[sy];
-      
-      const syContainer = document.createElement('div');
-      syContainer.className = 'sy-group-container';
-      
-      // Auto-expand if the group contains the active selected event
-      const hasActiveEvent = eventsInSY.some(e => e.id === appState.activeEventId);
-      const isCollapsed = appState.collapsedSY.has(sy) && !hasActiveEvent;
-      
-      if (isCollapsed) {
-        syContainer.classList.add('collapsed');
+    try {
+      if (!appState.collapsedSY || typeof appState.collapsedSY.has !== 'function') {
+        appState.collapsedSY = new Set();
       }
 
-      syContainer.innerHTML = `
-        <div class="sy-group-header">
-          <span><i class="fa-solid fa-graduation-cap"></i> S-Y ${escapeHTML(sy)} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">(${eventsInSY.length} ${eventsInSY.length === 1 ? 'event' : 'events'})</span></span>
-          <i class="fa-solid fa-chevron-down chevron-icon"></i>
-        </div>
-        <div class="sy-group-body"></div>
-      `;
-
-      const header = syContainer.querySelector('.sy-group-header');
-      const body = syContainer.querySelector('.sy-group-body');
-
-      header.addEventListener('click', () => {
-        const collapsed = syContainer.classList.toggle('collapsed');
-        if (collapsed) {
-          appState.collapsedSY.add(sy);
-        } else {
-          appState.collapsedSY.delete(sy);
-        }
+      const searchQuery = appState.filters.search.toLowerCase();
+      const filteredEvents = appState.events.filter(evt => {
+        const matchesSearch = evt.name.toLowerCase().includes(searchQuery);
+        const matchesSemester = appState.filters.semester === 'all' || (evt.semester && evt.semester === appState.filters.semester);
+        const matchesYear = appState.filters.schoolYear === 'all' || (evt.schoolYear && evt.schoolYear === appState.filters.schoolYear);
+        return matchesSearch && matchesSemester && matchesYear;
       });
-
-      eventsInSY.forEach(evt => {
-        const bal = appState.computedBalances[evt.id] || {};
-        const isActive = evt.id === appState.activeEventId;
-        const statusClass = evt.status === 'Active' ? 'status-active' : 'status-closed';
-        
-        const card = document.createElement('div');
-        card.className = `event-card ${isActive ? 'active-card' : ''}`;
-        card.innerHTML = `
-          <div class="card-header-row">
-            <div class="card-title">${escapeHTML(evt.name)}</div>
-            <span class="badge-status ${statusClass}">${evt.status}</span>
+      
+      // Update live overall balance badge at the top of the sidebar (shows Kiosk Reserve balance)
+      el.navOverallBalance.textContent = `₱${formatMoney(appState.kioskBalance || 0)}`;
+      
+      // Toggle active styling on overall nav button
+      if (appState.activeEventId === 'overall') {
+        el.btnOverallDashboard.classList.add('active-overall');
+      } else {
+        el.btnOverallDashboard.classList.remove('active-overall');
+      }
+      
+      el.eventCount.textContent = filteredEvents.length;
+      el.eventList.innerHTML = '';
+      
+      if (filteredEvents.length === 0) {
+        el.eventList.innerHTML = `
+          <div class="expense-empty-state" style="padding: 30px 10px;">
+            <i class="fa-solid fa-folder-closed"></i>
+            <p>No active events found.</p>
           </div>
-          <div class="card-meta">
-            <i class="fa-regular fa-calendar"></i>
-            <span>${formatDateString(evt.date)}</span>
-          </div>
-          <div class="card-amount-row">
-            <div>
-              <div class="amount-label">Pool / Remaining</div>
-            </div>
-            <div class="amount-value">
-              <span class="text-budget">₱${formatMoney(bal.totalPool || 0)}</span>
-              <span style="color: var(--text-muted); font-size: 0.75rem;"> / ₱${formatMoney(bal.netRemaining || 0)}</span>
-            </div>
-          </div>
-          ${hasWriteAccess ? `
-          <div class="card-actions-row" style="display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-glass);">
-            <button class="btn-card-edit" data-id="${evt.id}" title="Edit Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-              <i class="fa-regular fa-pen-to-square"></i> Edit
-            </button>
-            <button class="btn-card-delete" data-id="${evt.id}" title="Delete Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-              <i class="fa-regular fa-trash-can"></i> Delete
-            </button>
-          </div>
-          ` : ''}
         `;
+        return;
+      }
+
+      // Group events by school year
+      const groups = {};
+      filteredEvents.forEach(evt => {
+        const sy = evt.schoolYear || 'Unknown S-Y';
+        if (!groups[sy]) {
+          groups[sy] = [];
+        }
+        groups[sy].push(evt);
+      });
+      
+      const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
+
+      // Sort school years descending (newest first)
+      const sortedSYs = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+      sortedSYs.forEach(sy => {
+        const eventsInSY = groups[sy];
         
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.btn-card-edit') || e.target.closest('.btn-card-delete')) return;
-          selectEvent(evt.id);
+        const syContainer = document.createElement('div');
+        syContainer.className = 'sy-group-container';
+        
+        // Auto-expand if the group contains the active selected event
+        const hasActiveEvent = eventsInSY.some(e => e.id === appState.activeEventId);
+        const isCollapsed = appState.collapsedSY.has(sy) && !hasActiveEvent;
+        
+        if (isCollapsed) {
+          syContainer.classList.add('collapsed');
+        }
+
+        syContainer.innerHTML = `
+          <div class="sy-group-header">
+            <span><i class="fa-solid fa-graduation-cap"></i> S-Y ${escapeHTML(sy)} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">(${eventsInSY.length} ${eventsInSY.length === 1 ? 'event' : 'events'})</span></span>
+            <i class="fa-solid fa-chevron-down chevron-icon"></i>
+          </div>
+          <div class="sy-group-body"></div>
+        `;
+
+        const header = syContainer.querySelector('.sy-group-header');
+        const body = syContainer.querySelector('.sy-group-body');
+
+        header.addEventListener('click', () => {
+          const collapsed = syContainer.classList.toggle('collapsed');
+          if (collapsed) {
+            appState.collapsedSY.add(sy);
+          } else {
+            appState.collapsedSY.delete(sy);
+          }
         });
 
-        if (hasWriteAccess) {
-          card.querySelector('.btn-card-edit').addEventListener('click', (e) => {
-            e.stopPropagation();
-            openProjectModal('edit', evt.id);
+        eventsInSY.forEach(evt => {
+          const bal = appState.computedBalances[evt.id] || {};
+          const isActive = evt.id === appState.activeEventId;
+          const statusClass = evt.status === 'Active' ? 'status-active' : 'status-closed';
+          
+          const card = document.createElement('div');
+          card.className = `event-card ${isActive ? 'active-card' : ''}`;
+          card.innerHTML = `
+            <div class="card-header-row">
+              <div class="card-title">${escapeHTML(evt.name)}</div>
+              <span class="badge-status ${statusClass}">${evt.status}</span>
+            </div>
+            <div class="card-meta">
+              <i class="fa-regular fa-calendar"></i>
+              <span>${formatDateString(evt.date)}</span>
+            </div>
+            <div class="card-amount-row">
+              <div>
+                <div class="amount-label">Pool / Remaining</div>
+              </div>
+              <div class="amount-value">
+                <span class="text-budget">₱${formatMoney(bal.totalPool || 0)}</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem;"> / ₱${formatMoney(bal.netRemaining || 0)}</span>
+              </div>
+            </div>
+            ${hasWriteAccess ? `
+            <div class="card-actions-row" style="display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-glass);">
+              <button class="btn-card-edit" data-id="${evt.id}" title="Edit Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                <i class="fa-regular fa-pen-to-square"></i> Edit
+              </button>
+              <button class="btn-card-delete" data-id="${evt.id}" title="Delete Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                <i class="fa-regular fa-trash-can"></i> Delete
+              </button>
+            </div>
+            ` : ''}
+          `;
+          
+          card.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-card-edit') || e.target.closest('.btn-card-delete')) return;
+            selectEvent(evt.id);
           });
-          card.querySelector('.btn-card-delete').addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteEvent(evt.id);
-          });
-        }
 
-        body.appendChild(card);
+          if (hasWriteAccess) {
+            card.querySelector('.btn-card-edit').addEventListener('click', (e) => {
+              e.stopPropagation();
+              openProjectModal('edit', evt.id);
+            });
+            card.querySelector('.btn-card-delete').addEventListener('click', (e) => {
+              e.stopPropagation();
+              deleteEvent(evt.id);
+            });
+          }
+
+          body.appendChild(card);
+        });
+
+        el.eventList.appendChild(syContainer);
       });
-
-      el.eventList.appendChild(syContainer);
-    });
+    } catch (err) {
+      console.error('Error rendering event list:', err);
+      alert('Render Error: ' + err.message);
+    }
   }
 
   // --- 9. Event Selection & Detail Panel ---
