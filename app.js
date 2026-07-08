@@ -1,4 +1,4 @@
-﻿import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
 window.addEventListener('error', (e) => {
   alert('JavaScript Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
@@ -3599,6 +3599,144 @@ function populateProjectSchoolYearSelect() {
       saveLedger(sy, sem, ledger);
       renderSanctionsTable();
     });
+  }
+
+  // ---- Wire Excel/CSV Import ----
+  const excelInput = document.getElementById('sanctions-excel-file');
+  if (excelInput) {
+    excelInput.addEventListener('change', (e) => {
+      const sy = getSY(); const sem = getSem();
+      if (!sy || !sem) {
+        alert('Please select (or type) a School Year and pick a Semester first.');
+        excelInput.value = '';
+        return;
+      }
+
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      reader.onload = (evt) => {
+        try {
+          let importedStudents = [];
+          if (ext === 'csv') {
+            const text = evt.target.result;
+            const parsed = Papa.parse(text, { header: false, skipEmptyLines: true });
+            importedStudents = extractStudentsFromRows(parsed.data);
+          } else {
+            // xlsx / xls
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            importedStudents = extractStudentsFromRows(jsonData);
+          }
+
+          if (importedStudents.length === 0) {
+            alert('No student names found. Please make sure the Excel file has a column for names (e.g., "Full Name", "Name", or "Student Name").');
+          } else {
+            const ledger = loadLedger(sy, sem);
+            // Append or replace? Let's append new names while avoiding duplicates
+            const existingNames = new Set(ledger.students.map(s => s.name.toLowerCase()));
+            let addedCount = 0;
+            importedStudents.forEach(stu => {
+              if (!existingNames.has(stu.name.toLowerCase())) {
+                ledger.students.push({
+                  id: uid(),
+                  name: stu.name,
+                  attendance: {},
+                  paid: false
+                });
+                addedCount++;
+              }
+            });
+            saveLedger(sy, sem, ledger);
+            renderSanctionsTable();
+            alert(`Successfully imported ${addedCount} new student(s) from Excel!`);
+          }
+        } catch (error) {
+          console.error(error);
+          alert('Failed to parse Excel file. Please ensure it is a valid format.');
+        }
+        excelInput.value = ''; // Reset input
+      };
+
+      if (ext === 'csv') {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    });
+  }
+
+  // Parse table rows and find columns for name, year level, section
+  function extractStudentsFromRows(rows) {
+    if (!rows || rows.length === 0) return [];
+    
+    // Find headers or guess column indexes
+    let nameIdx = -1;
+    let yearIdx = -1;
+    let sectionIdx = -1;
+
+    // Search the first few rows to find where headers are
+    const searchLimit = Math.min(rows.length, 5);
+    for (let r = 0; r < searchLimit; r++) {
+      const row = rows[r];
+      if (!row) continue;
+      for (let c = 0; c < row.length; c++) {
+        const val = String(row[c] || '').toLowerCase().trim();
+        if (val.includes('name') || val.includes('student') || val.includes('fullname') || val.includes('full name')) {
+          nameIdx = c;
+        }
+        if (val.includes('year') || val.includes('level') || val.includes('yr')) {
+          yearIdx = c;
+        }
+        if (val.includes('section') || val.includes('sec')) {
+          sectionIdx = c;
+        }
+      }
+      if (nameIdx !== -1) {
+        // Headers found, delete headers up to this row index
+        rows.splice(0, r + 1);
+        break;
+      }
+    }
+
+    // Default to column 0 if no header found
+    if (nameIdx === -1) nameIdx = 0;
+
+    const list = [];
+    rows.forEach(row => {
+      if (!row || !row[nameIdx]) return;
+      const name = String(row[nameIdx]).trim();
+      if (!name || name.toLowerCase() === 'name' || name.toLowerCase().includes('student list')) return;
+      
+      let year = '';
+      if (yearIdx !== -1 && row[yearIdx]) {
+        year = String(row[yearIdx]).trim();
+      }
+      let section = '';
+      if (sectionIdx !== -1 && row[sectionIdx]) {
+        section = String(row[sectionIdx]).trim();
+      }
+
+      // Format name to show e.g., "John Doe (3rd Year - A)" if year/section are present
+      let displayName = name;
+      const details = [];
+      if (year) details.push(year);
+      if (section) details.push(section);
+      
+      if (details.length > 0) {
+        displayName += ` (${details.join(' - ')})`;
+      }
+
+      list.push({ name: displayName });
+    });
+
+    return list;
   }
 
   // ---- Show sanctions button only for auditors ----
