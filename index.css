@@ -2571,3 +2571,64 @@ input:focus, select:focus, textarea:focus {
     overflow: visible;
   }
 }
+
+/* --- School Year Grouping in Sidebar --- */
+.sy-group-container {
+  margin-bottom: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.sy-group-header {
+  padding: 12px 16px;
+  background: rgba(15, 23, 42, 0.03);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border-glass);
+  transition: background 0.2s;
+}
+
+.sy-group-header:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.sy-group-header .chevron-icon {
+  transition: transform 0.3s ease;
+  color: var(--text-muted);
+}
+
+.sy-group-body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 1000px;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  overflow: hidden;
+}
+
+/* Collapsed State */
+.sy-group-container.collapsed .sy-group-header {
+  border-bottom-color: transparent;
+}
+
+.sy-group-container.collapsed .sy-group-body {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top: none;
+}
+
+.sy-group-container.collapsed .sy-group-header .chevron-icon {
+  transform: rotate(-90deg);
+}

@@ -276,7 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     attachedReceiptBase64: null,
     profileAvatarPendingBase64: null,
-    pendingProjectPhotoBase64: null
+    pendingProjectPhotoBase64: null,
+    collapsedSY: new Set()
   };
 
   let appAccounts = null;
@@ -975,63 +976,113 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       return;
     }
+
+    // Group events by school year
+    const groups = {};
+    filteredEvents.forEach(evt => {
+      const sy = evt.schoolYear || 'Unknown S-Y';
+      if (!groups[sy]) {
+        groups[sy] = [];
+      }
+      groups[sy].push(evt);
+    });
     
     const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
 
-    filteredEvents.forEach(evt => {
-      const bal = appState.computedBalances[evt.id] || {};
-      const isActive = evt.id === appState.activeEventId;
-      const statusClass = evt.status === 'Active' ? 'status-active' : 'status-closed';
-      
-      const card = document.createElement('div');
-      card.className = `event-card ${isActive ? 'active-card' : ''}`;
-      card.innerHTML = `
-        <div class="card-header-row">
-          <div class="card-title">${escapeHTML(evt.name)}</div>
-          <span class="badge-status ${statusClass}">${evt.status}</span>
-        </div>
-        <div class="card-meta">
-          <i class="fa-regular fa-calendar"></i>
-          <span>${formatDateString(evt.date)}</span>
-        </div>
-        <div class="card-amount-row">
-          <div>
-            <div class="amount-label">Pool / Remaining</div>
-          </div>
-          <div class="amount-value">
-            <span class="text-budget">₱${formatMoney(bal.totalPool || 0)}</span>
-            <span style="color: var(--text-muted); font-size: 0.75rem;"> / ₱${formatMoney(bal.netRemaining || 0)}</span>
-          </div>
-        </div>
-        ${hasWriteAccess ? `
-        <div class="card-actions-row" style="display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-glass);">
-          <button class="btn-card-edit" data-id="${evt.id}" title="Edit Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-            <i class="fa-regular fa-pen-to-square"></i> Edit
-          </button>
-          <button class="btn-card-delete" data-id="${evt.id}" title="Delete Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-            <i class="fa-regular fa-trash-can"></i> Delete
-          </button>
-        </div>
-        ` : ''}
-      `;
-      
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.btn-card-edit') || e.target.closest('.btn-card-delete')) return;
-        selectEvent(evt.id);
-      });
+    // Sort school years descending (newest first)
+    const sortedSYs = Object.keys(groups).sort((a, b) => b.localeCompare(a));
 
-      if (hasWriteAccess) {
-        card.querySelector('.btn-card-edit').addEventListener('click', (e) => {
-          e.stopPropagation();
-          openProjectModal('edit', evt.id);
-        });
-        card.querySelector('.btn-card-delete').addEventListener('click', (e) => {
-          e.stopPropagation();
-          deleteEvent(evt.id);
-        });
+    sortedSYs.forEach(sy => {
+      const eventsInSY = groups[sy];
+      
+      const syContainer = document.createElement('div');
+      syContainer.className = 'sy-group-container';
+      
+      // Auto-expand if the group contains the active selected event
+      const hasActiveEvent = eventsInSY.some(e => e.id === appState.activeEventId);
+      const isCollapsed = appState.collapsedSY.has(sy) && !hasActiveEvent;
+      
+      if (isCollapsed) {
+        syContainer.classList.add('collapsed');
       }
 
-      el.eventList.appendChild(card);
+      syContainer.innerHTML = `
+        <div class="sy-group-header">
+          <span><i class="fa-solid fa-graduation-cap"></i> S-Y ${escapeHTML(sy)} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">(${eventsInSY.length} ${eventsInSY.length === 1 ? 'event' : 'events'})</span></span>
+          <i class="fa-solid fa-chevron-down chevron-icon"></i>
+        </div>
+        <div class="sy-group-body"></div>
+      `;
+
+      const header = syContainer.querySelector('.sy-group-header');
+      const body = syContainer.querySelector('.sy-group-body');
+
+      header.addEventListener('click', () => {
+        const collapsed = syContainer.classList.toggle('collapsed');
+        if (collapsed) {
+          appState.collapsedSY.add(sy);
+        } else {
+          appState.collapsedSY.delete(sy);
+        }
+      });
+
+      eventsInSY.forEach(evt => {
+        const bal = appState.computedBalances[evt.id] || {};
+        const isActive = evt.id === appState.activeEventId;
+        const statusClass = evt.status === 'Active' ? 'status-active' : 'status-closed';
+        
+        const card = document.createElement('div');
+        card.className = `event-card ${isActive ? 'active-card' : ''}`;
+        card.innerHTML = `
+          <div class="card-header-row">
+            <div class="card-title">${escapeHTML(evt.name)}</div>
+            <span class="badge-status ${statusClass}">${evt.status}</span>
+          </div>
+          <div class="card-meta">
+            <i class="fa-regular fa-calendar"></i>
+            <span>${formatDateString(evt.date)}</span>
+          </div>
+          <div class="card-amount-row">
+            <div>
+              <div class="amount-label">Pool / Remaining</div>
+            </div>
+            <div class="amount-value">
+              <span class="text-budget">₱${formatMoney(bal.totalPool || 0)}</span>
+              <span style="color: var(--text-muted); font-size: 0.75rem;"> / ₱${formatMoney(bal.netRemaining || 0)}</span>
+            </div>
+          </div>
+          ${hasWriteAccess ? `
+          <div class="card-actions-row" style="display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-glass);">
+            <button class="btn-card-edit" data-id="${evt.id}" title="Edit Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+              <i class="fa-regular fa-pen-to-square"></i> Edit
+            </button>
+            <button class="btn-card-delete" data-id="${evt.id}" title="Delete Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+              <i class="fa-regular fa-trash-can"></i> Delete
+            </button>
+          </div>
+          ` : ''}
+        `;
+        
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-card-edit') || e.target.closest('.btn-card-delete')) return;
+          selectEvent(evt.id);
+        });
+
+        if (hasWriteAccess) {
+          card.querySelector('.btn-card-edit').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openProjectModal('edit', evt.id);
+          });
+          card.querySelector('.btn-card-delete').addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteEvent(evt.id);
+          });
+        }
+
+        body.appendChild(card);
+      });
+
+      el.eventList.appendChild(syContainer);
     });
   }
 
