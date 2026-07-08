@@ -3424,13 +3424,7 @@ function populateProjectSchoolYearSelect() {
       tdName.className = 'cell-name';
       
       tdName.innerHTML = `
-        <div style="display:flex;flex-direction:column;">
-          <input type="text" class="sanctions-name-input" value="${escapeAttr(stu.name)}" style="font-weight:700;">
-          <div style="font-size:0.7rem;color:var(--text-muted);display:flex;gap:8px;margin-top:2px;">
-            <span>Yr: ${stu.yearLevel || 'N/A'}</span>
-            <span>Sec: ${stu.section || 'N/A'}</span>
-          </div>
-        </div>
+        <input type="text" class="sanctions-name-input" value="${escapeAttr(stu.name)}" style="font-weight:700;">
       `;
 
       const nameIn = tdName.querySelector('.sanctions-name-input');
