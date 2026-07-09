@@ -753,6 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAddExpenseFab: document.getElementById('btn-add-expense-fab'),
 
     btnExportPdf: document.getElementById('btn-export-pdf'),
+    btnEditProjectHeader: document.getElementById('btn-edit-project-header'),
     
     // Upload Modal
     uploadModal: document.getElementById('upload-modal'),
@@ -1250,6 +1251,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set inline input editability
     const hasWriteAccess = appState.currentUser && (appState.currentUser.role === 'auditor' || appState.currentUser.role === 'secretary');
     setInlineInputsEditable(hasWriteAccess);
+    if (el.btnEditProjectHeader) {
+      el.btnEditProjectHeader.classList.toggle('hide', !hasWriteAccess);
+    }
     
     // Display computed values
     populateFinanceColumns(event.id);
@@ -2813,6 +2817,11 @@ function populateProjectSchoolYearSelect() {
 
   // Always attach click listener; permissions UI visibility handled by updateUIPermissions
   el.btnAddProject.addEventListener('click', () => openProjectModal('add'));
+  if (el.btnEditProjectHeader) {
+    el.btnEditProjectHeader.addEventListener('click', () => {
+      openProjectModal('edit', appState.activeEventId);
+    });
+  }
   el.btnCloseProjectModal.addEventListener('click', closeProjectModal);
   el.btnCancelProject.addEventListener('click', closeProjectModal);
   el.projectForm.addEventListener('submit', handleProjectFormSubmit);
