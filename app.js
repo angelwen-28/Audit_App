@@ -3469,7 +3469,7 @@ function populateProjectSchoolYearSelect() {
         });
       } else {
         tdName.innerHTML = `
-          <span style="font-weight:700; color:#1e293b; font-size:0.88rem; display:block; padding:4px 0;">${escapeHtml(stu.name)}</span>
+          <span style="font-weight:700; color:#1e293b; font-size:0.88rem; display:block; padding:4px 0;">${escapeHTML(stu.name)}</span>
         `;
       }
       tr.appendChild(tdName);
