@@ -1102,7 +1102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
               </div>
               `}
-              ${(mode === 'audit' && hasWriteAccess) ? `
+              ${((mode === 'audit' || mode === 'sanctions') && hasWriteAccess) ? `
               <div class="card-actions-row" style="display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-glass);">
                 <button class="btn-card-edit" data-id="${evt.id}" title="Edit Project" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); color: var(--primary); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
                   <i class="fa-regular fa-pen-to-square"></i> Edit
@@ -1119,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', () => {
               selectEvent(evt.id, mode);
             });
 
-            if (mode === 'audit' && hasWriteAccess) {
+            if ((mode === 'audit' || mode === 'sanctions') && hasWriteAccess) {
               card.querySelector('.btn-card-edit').addEventListener('click', (e) => {
                 e.stopPropagation();
                 openProjectModal('edit', evt.id);
