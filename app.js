@@ -3597,12 +3597,23 @@ function populateProjectSchoolYearSelect() {
   function updateSanctionsSummary(events, students) {
     const total = students.reduce((s, stu) =>
       s + events.reduce((ss, ev) => ss + parseFloat((stu.attendance || {})[ev.id] || 0), 0), 0);
-    const paid  = students.filter(s => s.paid).length;
+    
+    // Sum total for students who have paid
+    const totalPaid = students.reduce((s, stu) => {
+      if (stu.paid) {
+        return s + events.reduce((ss, ev) => ss + parseFloat((stu.attendance || {})[ev.id] || 0), 0);
+      }
+      return s;
+    }, 0);
+
+    const paidCount = students.filter(s => s.paid).length;
     const g = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    
     g('sanctions-stat-students', students.length);
     g('sanctions-stat-events',   events.length);
     g('sanctions-stat-total',    `₱${total}`);
-    g('sanctions-stat-paid',     `${paid} / ${students.length}`);
+    g('sanctions-stat-paid-amount', `₱${totalPaid}`);
+    g('sanctions-stat-paid',     `${paidCount} / ${students.length}`);
   }
 
   // ---- Wire sidebar Sanctions button ----
