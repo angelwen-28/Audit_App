@@ -3449,18 +3449,19 @@ function populateProjectSchoolYearSelect() {
       const tdName = document.createElement('td');
       tdName.className = 'cell-name';
       
-      tdName.innerHTML = `
-        <input type="text" class="sanctions-name-input" value="${escapeAttr(stu.name)}" style="font-weight:700;">
-      `;
-
-      const nameIn = tdName.querySelector('.sanctions-name-input');
       if (isAuditor) {
+        tdName.innerHTML = `
+          <input type="text" class="sanctions-name-input" value="${escapeAttr(stu.name)}" style="font-weight:700;">
+        `;
+        const nameIn = tdName.querySelector('.sanctions-name-input');
         nameIn.addEventListener('change', e => {
           ledger.students[sIdx].name = e.target.value.trim();
           persist();
         });
       } else {
-        nameIn.readOnly = true;
+        tdName.innerHTML = `
+          <span style="font-weight:700; color:#1e293b; font-size:0.88rem; display:block; padding:4px 0;">${escapeHtml(stu.name)}</span>
+        `;
       }
       tr.appendChild(tdName);
 
@@ -3515,17 +3516,25 @@ function populateProjectSchoolYearSelect() {
 
       const tdPaid = document.createElement('td');
       tdPaid.className = 'cell-paid';
-      const chk = document.createElement('input');
-      chk.type = 'checkbox';
-      chk.className = 'sanctions-paid-check';
-      chk.checked = !!stu.paid;
-      if (!isAuditor) chk.disabled = true;
-      chk.addEventListener('change', e => {
-        ledger.students[sIdx].paid = e.target.checked;
-        persist();
-        updateSanctionsSummary(events, allStudents);
-      });
-      tdPaid.appendChild(chk);
+      
+      if (isAuditor) {
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.className = 'sanctions-paid-check';
+        chk.checked = !!stu.paid;
+        chk.addEventListener('change', e => {
+          ledger.students[sIdx].paid = e.target.checked;
+          persist();
+          updateSanctionsSummary(events, allStudents);
+        });
+        tdPaid.appendChild(chk);
+      } else {
+        if (stu.paid) {
+          tdPaid.innerHTML = `<span style="color:#10b981; font-weight:700; font-size:0.8rem; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-circle-check"></i> PAID</span>`;
+        } else {
+          tdPaid.innerHTML = `<span style="color:#ef4444; font-weight:700; font-size:0.8rem; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-circle-xmark"></i> UNPAID</span>`;
+        }
+      }
       tr.appendChild(tdPaid);
 
       if (isAuditor) {
