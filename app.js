@@ -2586,139 +2586,167 @@ function populateProjectSchoolYearSelect() {
 
   // --- 14. PDF Document Compiler & Exporter ---
   function exportAuditReportToPDF() {
-    const eventId = appState.activeEventId === 'overall'
-      ? appState.events[appState.events.length - 1].id
-      : appState.activeEventId;
-    if (!eventId) return;
-    
-    const event = appState.events.find(e => e.id === eventId);
-    if (!event) return;
-    
-    const bal = appState.computedBalances[eventId];
-    const expensesList = appState.expenses[eventId] || [];
-    
-    const printContainer = document.createElement('div');
-    printContainer.style.position = 'fixed';
-    printContainer.style.top = '-9999px';
-    printContainer.style.left = '-9999px';
-    printContainer.style.width = '800px';
-    printContainer.style.padding = '40px';
-    printContainer.style.backgroundColor = '#ffffff';
-    printContainer.style.color = '#000000';
-    printContainer.style.fontFamily = "'Inter', sans-serif";
-    
-    let rowsHtml = '';
-    expensesList.forEach(exp => {
-      const rec = (appState.receipts[eventId] || []).find(r => r.id === exp.receiptId);
-      const dateStr = rec ? rec.date : '';
-      rowsHtml += `
-        <tr style="border-bottom: 1px solid #e2e8f0;">
-          <td style="padding: 10px 12px; font-size: 12px;">${dateStr}</td>
-          <td style="padding: 10px 12px; font-weight: 600; font-size: 12px;">${escapeHTML(exp.description)}</td>
-          <td style="padding: 10px 12px; font-size: 12px; text-align: center;">${escapeHTML(exp.unit || '')}</td>
-          <td style="padding: 10px 12px; font-size: 12px; text-align: right;">${exp.quantity || 1}</td>
-          <td style="padding: 10px 12px; font-size: 12px; text-align: right;">&#8369;${formatMoney(exp.unitCost || 0)}</td>
-          <td style="padding: 10px 12px; text-align: right; font-weight: bold; font-size: 12px;">&#8369;${formatMoney(exp.amount)}</td>
-        </tr>
-      `;
-    });
-    
-    printContainer.innerHTML = `
-      <!-- Report Header -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px;">
-        <div>
-          <h1 style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: -0.5px;">AUDIT REPORT</h1>
-          <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0;">Secure Ledger Verification & Compliance Report</p>
-        </div>
-        <div style="text-align: right;">
-          <div style="font-size: 13px; font-weight: bold; color: #0f172a;">REPORT ID: AR-${Math.floor(100000 + Math.random() * 900000)}</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Generated: ${new Date().toLocaleString()}</div>
-        </div>
-      </div>
+    try {
+      if (typeof html2pdf === 'undefined') {
+        alert('PDF generation engine (html2pdf) is not loaded. Please ensure you are connected to the internet and refresh the page.');
+        return;
+      }
+
+      const eventId = appState.activeEventId === 'overall'
+        ? appState.events[appState.events.length - 1].id
+        : appState.activeEventId;
+      if (!eventId) {
+        alert('No active project selected.');
+        return;
+      }
       
-      <!-- Project Metadata -->
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div>
-          <div style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">EVENT</div>
-          <div style="font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px;">${escapeHTML(event.name)}</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Date: ${formatDateString(event.date)}</div>
-        </div>
-        <div>
-          <div style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">VERIFIED AUDITOR</div>
-          <div style="font-size: 14px; font-weight: 600; color: #0f172a; margin-top: 4px;">${appState.currentUser.name}</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Email: ${appState.currentUser.email}</div>
-        </div>
-      </div>
+      const event = appState.events.find(e => e.id === eventId);
+      if (!event) {
+        alert('Active project details not found.');
+        return;
+      }
       
-      <!-- Double Column Financial Summary -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 30px;">
-        <!-- Income Pool -->
-        <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; border-top: 3px solid #f97316;">
-          <div style="font-size: 12px; font-weight: bold; color: #f97316; text-transform: uppercase; margin-bottom: 12px;">Income Pool</div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Previous Balance</span><span style="font-weight: bold;">₱${formatMoney(bal.previousBalance)}</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Student Collection (${event.students} × ₱${formatMoney(event.fee)})</span><span style="font-weight: bold;">₱${formatMoney(bal.studentCollection)}</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Membership Fees</span><span style="font-weight: bold;">₱${formatMoney(bal.membershipTotal)}</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Sanctions</span><span style="font-weight: bold;">₱${formatMoney(bal.sanctionsTotal)}</span></div>
-          <div style="border-top: 2px solid #e2e8f0; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between;"><span style="font-weight: bold; font-size: 13px;">Total Pool</span><span style="font-weight: bold; font-size: 16px; color: #f97316;">₱${formatMoney(bal.totalPool)}</span></div>
-        </div>
-        <!-- Deductions -->
-        <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; border-top: 3px solid #475569;">
-          <div style="font-size: 12px; font-weight: bold; color: #475569; text-transform: uppercase; margin-bottom: 12px;">Deductions</div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Starting Pool</span><span style="font-weight: bold;">₱${formatMoney(bal.totalPool)}</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Total Expenses (${bal.expenseCount} records)</span><span style="font-weight: bold; color: #ef4444;">₱${formatMoney(bal.totalExpenses)}</span></div>
-          <div style="border-top: 2px solid #e2e8f0; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between;"><span style="font-weight: bold; font-size: 13px;">Net Remaining</span><span style="font-weight: bold; font-size: 16px; color: ${bal.netRemaining >= 0 ? '#059669' : '#ef4444'};">₱${formatMoney(bal.netRemaining)}</span></div>
-        </div>
-      </div>
+      // Ensure balances are computed
+      computeAllBalances();
+      const bal = appState.computedBalances[eventId] || {
+        previousBalance: 0,
+        studentCollection: 0,
+        membershipTotal: 0,
+        sanctionsTotal: 0,
+        totalPool: 0,
+        totalExpenses: 0,
+        expenseCount: 0,
+        netRemaining: 0
+      };
+
+      const expensesList = appState.expenses[eventId] || [];
       
-      <!-- Expense Ledger -->
-      <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 16px 0; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">COMPLIANCE TRANSACTION LEDGER</h3>
+      const printContainer = document.createElement('div');
+      printContainer.style.position = 'fixed';
+      printContainer.style.top = '-9999px';
+      printContainer.style.left = '-9999px';
+      printContainer.style.width = '800px';
+      printContainer.style.padding = '40px';
+      printContainer.style.backgroundColor = '#ffffff';
+      printContainer.style.color = '#000000';
+      printContainer.style.fontFamily = "'Inter', sans-serif";
       
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 50px;">
-        <thead>
-          <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-            <th style="padding: 10px 12px; text-align: left; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 105px;">Date</th>
-            <th style="padding: 10px 12px; text-align: left; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase;">Description</th>
-            <th style="padding: 10px 12px; text-align: center; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 60px;">Unit</th>
-            <th style="padding: 10px 12px; text-align: right; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 50px;">Qty</th>
-            <th style="padding: 10px 12px; text-align: right; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 100px;">Unit Cost</th>
-            <th style="padding: 10px 12px; text-align: right; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 100px;">Amount</th>
+      let rowsHtml = '';
+      expensesList.forEach(exp => {
+        const rec = (appState.receipts[eventId] || []).find(r => r.id === exp.receiptId);
+        const dateStr = rec ? rec.date : '';
+        rowsHtml += `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 10px 12px; font-size: 12px;">${dateStr}</td>
+            <td style="padding: 10px 12px; font-weight: 600; font-size: 12px;">${escapeHTML(exp.description)}</td>
+            <td style="padding: 10px 12px; font-size: 12px; text-align: center;">${escapeHTML(exp.unit || '')}</td>
+            <td style="padding: 10px 12px; font-size: 12px; text-align: right;">${exp.quantity || 1}</td>
+            <td style="padding: 10px 12px; font-size: 12px; text-align: right;">&#8369;${formatMoney(exp.unitCost || 0)}</td>
+            <td style="padding: 10px 12px; text-align: right; font-weight: bold; font-size: 12px;">&#8369;${formatMoney(exp.amount)}</td>
           </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
-      </table>
+        `;
+      });
       
-      <!-- Report Signatures -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 60px;">
-        <div>
-          <div style="border-top: 1px solid #94a3b8; width: 220px; padding-top: 6px; font-size: 12px; font-weight: bold; color: #334155;">Auditor Signature</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${appState.currentUser.name} (Certified)</div>
+      printContainer.innerHTML = `
+        <!-- Report Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px;">
+          <div>
+            <h1 style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: -0.5px;">AUDIT REPORT</h1>
+            <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0;">Secure Ledger Verification & Compliance Report</p>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 13px; font-weight: bold; color: #0f172a;">REPORT ID: AR-${Math.floor(100000 + Math.random() * 900000)}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Generated: ${new Date().toLocaleString()}</div>
+          </div>
         </div>
-        <div style="text-align: right;">
-          <div style="border-top: 1px solid #94a3b8; width: 220px; padding-top: 6px; font-size: 12px; font-weight: bold; color: #334155; display: inline-block;">Compliance Committee Approval</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Verification Status: SIGNED Ledger</div>
+        
+        <!-- Project Metadata -->
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <div style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">EVENT</div>
+            <div style="font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px;">${escapeHTML(event.name)}</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Date: ${formatDateString(event.date)}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">VERIFIED AUDITOR</div>
+            <div style="font-size: 14px; font-weight: 600; color: #0f172a; margin-top: 4px;">${appState.currentUser ? appState.currentUser.name : 'Unknown Auditor'}</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Email: ${appState.currentUser ? appState.currentUser.email : ''}</div>
+          </div>
         </div>
-      </div>
-    `;
-    
-    document.body.appendChild(printContainer);
-    
-    const opt = {
-      margin: 15,
-      filename: `Audit_Report_${event.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    
-    html2pdf().set(opt).from(printContainer).save().then(() => {
-      printContainer.remove();
-    }).catch(err => {
-      console.error('PDF export failed', err);
-      printContainer.remove();
-      alert('Document generation failed. Please try again.');
-    });
+        
+        <!-- Double Column Financial Summary -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 30px;">
+          <!-- Income Pool -->
+          <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; border-top: 3px solid #f97316;">
+            <div style="font-size: 12px; font-weight: bold; color: #f97316; text-transform: uppercase; margin-bottom: 12px;">Income Pool</div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Previous Balance</span><span style="font-weight: bold;">₱${formatMoney(bal.previousBalance)}</span></div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Student Collection (${event.students} × ₱${formatMoney(event.fee)})</span><span style="font-weight: bold;">₱${formatMoney(bal.studentCollection)}</span></div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Membership Fees</span><span style="font-weight: bold;">₱${formatMoney(bal.membershipTotal || 0)}</span></div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Sanctions</span><span style="font-weight: bold;">₱${formatMoney(bal.sanctionsTotal || 0)}</span></div>
+            <div style="border-top: 2px solid #e2e8f0; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between;"><span style="font-weight: bold; font-size: 13px;">Total Pool</span><span style="font-weight: bold; font-size: 16px; color: #f97316;">₱${formatMoney(bal.totalPool)}</span></div>
+          </div>
+          <!-- Deductions -->
+          <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; border-top: 3px solid #475569;">
+            <div style="font-size: 12px; font-weight: bold; color: #475569; text-transform: uppercase; margin-bottom: 12px;">Deductions</div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Starting Pool</span><span style="font-weight: bold;">₱${formatMoney(bal.totalPool)}</span></div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;"><span style="color: #64748b;">Total Expenses (${bal.expenseCount} records)</span><span style="font-weight: bold; color: #ef4444;">₱${formatMoney(bal.totalExpenses)}</span></div>
+            <div style="border-top: 2px solid #e2e8f0; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between;"><span style="font-weight: bold; font-size: 13px;">Net Remaining</span><span style="font-weight: bold; font-size: 16px; color: ${bal.netRemaining >= 0 ? '#059669' : '#ef4444'};">₱${formatMoney(bal.netRemaining)}</span></div>
+          </div>
+        </div>
+        
+        <!-- Expense Ledger -->
+        <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 16px 0; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">COMPLIANCE TRANSACTION LEDGER</h3>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 50px;">
+          <thead>
+            <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+              <th style="padding: 10px 12px; text-align: left; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 105px;">Date</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase;">Description</th>
+              <th style="padding: 10px 12px; text-align: center; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 60px;">Unit</th>
+              <th style="padding: 10px 12px; text-align: right; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 50px;">Qty</th>
+              <th style="padding: 10px 12px; text-align: right; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 100px;">Unit Cost</th>
+              <th style="padding: 10px 12px; text-align: right; font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; width: 100px;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+        
+        <!-- Report Signatures -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 60px;">
+          <div>
+            <div style="border-top: 1px solid #94a3b8; width: 220px; padding-top: 6px; font-size: 12px; font-weight: bold; color: #334155;">Auditor Signature</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${appState.currentUser ? appState.currentUser.name : 'Unknown Auditor'} (Certified)</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="border-top: 1px solid #94a3b8; width: 220px; padding-top: 6px; font-size: 12px; font-weight: bold; color: #334155; display: inline-block;">Compliance Committee Approval</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Verification Status: SIGNED Ledger</div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(printContainer);
+      
+      const opt = {
+        margin: 15,
+        filename: `Audit_Report_${event.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      
+      html2pdf().set(opt).from(printContainer).save().then(() => {
+        printContainer.remove();
+      }).catch(err => {
+        console.error('PDF export failed', err);
+        printContainer.remove();
+        alert('Document generation failed. Please try again.');
+      });
+    } catch (error) {
+      console.error('Unexpected error during PDF generation:', error);
+      alert('Failed to generate PDF: ' + error.message);
+    }
   }
 
   // --- 15. UI Interaction Listeners ---
