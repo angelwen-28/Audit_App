@@ -2593,20 +2593,26 @@ function populateProjectSchoolYearSelect() {
       img.crossOrigin = 'Anonymous';
       img.onload = function() {
         try {
+          const w = this.naturalWidth || this.width;
+          const h = this.naturalHeight || this.height;
+          if (w === 0 || h === 0) {
+            resolve('');
+            return;
+          }
           const canvas = document.createElement('canvas');
-          canvas.width = this.naturalWidth || this.width;
-          canvas.height = this.naturalHeight || this.height;
+          canvas.width = w;
+          canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(this, 0, 0);
           resolve(canvas.toDataURL('image/png'));
         } catch (e) {
           console.warn('Canvas toDataURL failed for URL:', url, e);
-          resolve(''); // empty string tells generator to omit this image
+          resolve(''); // empty string fallback
         }
       };
       img.onerror = function() {
         console.warn('Image load failed for URL:', url);
-        resolve(''); // empty string tells generator to omit this image
+        resolve(''); // empty string fallback
       };
       // Append cache-busting query parameter to bypass browser CORS cache issues
       const cacheBuster = url + (url.indexOf('?') > -1 ? '&' : '?') + 't_cors=' + Date.now();
@@ -2694,7 +2700,7 @@ function populateProjectSchoolYearSelect() {
 
       let receiptsHtml = '';
       convertedReceipts.forEach((rec, rIdx) => {
-        if (rec.receiptUrlB64) {
+        if (rec.receiptUrlB64 && rec.receiptUrlB64.trim() !== '') {
           receiptsHtml += `
             <div style="break-inside: avoid; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 20px; background-color: #f8fafc;">
               <div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
@@ -2710,7 +2716,7 @@ function populateProjectSchoolYearSelect() {
       });
 
       let eventPhotoHtml = '';
-      if (eventPhotoBase64) {
+      if (eventPhotoBase64 && eventPhotoBase64.trim() !== '') {
         eventPhotoHtml = `
           <div style="break-inside: avoid; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 20px; background-color: #f8fafc;">
             <div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
@@ -2813,20 +2819,23 @@ function populateProjectSchoolYearSelect() {
         </div>
       `;
       
+      const wrapper = document.createElement('div');
+      wrapper.style.width = '0';
+      wrapper.style.height = '0';
+      wrapper.style.overflow = 'hidden';
+      wrapper.style.position = 'absolute';
+      wrapper.style.top = '0';
+      wrapper.style.left = '0';
+      
       const printContainer = document.createElement('div');
-      printContainer.style.position = 'fixed';
-      printContainer.style.left = '0';
-      printContainer.style.top = '0';
       printContainer.style.width = '800px';
-      printContainer.style.height = '100%';
       printContainer.style.backgroundColor = '#ffffff';
       printContainer.style.color = '#000000';
-      printContainer.style.opacity = '1';
-      printContainer.style.zIndex = '-99999';
-      printContainer.style.pointerEvents = 'none';
-      printContainer.style.overflow = 'hidden';
+      printContainer.style.padding = '40px';
       printContainer.innerHTML = htmlContent;
-      document.body.appendChild(printContainer);
+      
+      wrapper.appendChild(printContainer);
+      document.body.appendChild(wrapper);
 
       const opt = {
         margin: 15,
@@ -2840,7 +2849,7 @@ function populateProjectSchoolYearSelect() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       await html2pdf().set(opt).from(printContainer).save();
-      printContainer.remove();
+      wrapper.remove();
     } catch (error) {
       console.error('Unexpected error during PDF generation:', error);
       alert('Failed to generate PDF: ' + error.message);
