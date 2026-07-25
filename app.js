@@ -2636,6 +2636,38 @@ function populateProjectSchoolYearSelect() {
           </tr>
         `;
       });
+
+      const receiptsList = appState.receipts[eventId] || [];
+      let receiptsHtml = '';
+      receiptsList.forEach((rec, rIdx) => {
+        if (rec.receiptUrl) {
+          receiptsHtml += `
+            <div style="break-inside: avoid; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 20px; background-color: #f8fafc;">
+              <div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                RECEIPT #${rIdx + 1} &mdash; ₱${formatMoney(rec.totalAmount)}
+              </div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 12px;">Date: ${formatDateString(rec.date)}</div>
+              <div style="text-align: center; background-color: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <img src="${rec.receiptUrl}" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 4px; display: inline-block;" />
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      let eventPhotoHtml = '';
+      if (event.photoUrl) {
+        eventPhotoHtml = `
+          <div style="break-inside: avoid; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 20px; background-color: #f8fafc;">
+            <div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+              EVENT DOCUMENT PHOTO &mdash; ATTESTATION
+            </div>
+            <div style="text-align: center; background-color: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+              <img src="${event.photoUrl}" style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 4px; display: inline-block;" />
+            </div>
+          </div>
+        `;
+      }
       
       const htmlContent = `
         <div style="padding: 40px; background-color: #ffffff; color: #000000; font-family: Arial, sans-serif;">
@@ -2705,7 +2737,7 @@ function populateProjectSchoolYearSelect() {
           </table>
           
           <!-- Report Signatures -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 60px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 60px; margin-bottom: 40px;">
             <div>
               <div style="border-top: 1px solid #94a3b8; width: 220px; padding-top: 6px; font-size: 12px; font-weight: bold; color: #334155;">Auditor Signature</div>
               <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${appState.currentUser ? appState.currentUser.name : 'Unknown Auditor'} (Certified)</div>
@@ -2715,6 +2747,15 @@ function populateProjectSchoolYearSelect() {
               <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Verification Status: SIGNED Ledger</div>
             </div>
           </div>
+
+          <!-- Attachments & Proofs -->
+          ${(eventPhotoHtml || receiptsHtml) ? `
+            <div style="page-break-before: always; padding-top: 20px;">
+              <h3 style="font-size: 16px; font-weight: 700; margin: 0 0 20px 0; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; text-transform: uppercase;">VERIFIED ATTACHMENTS &amp; RECEIPTS</h3>
+              ${eventPhotoHtml}
+              ${receiptsHtml}
+            </div>
+          ` : ''}
         </div>
       `;
       
