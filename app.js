@@ -2584,8 +2584,42 @@ function populateProjectSchoolYearSelect() {
     }, 100);
   }
 
+  function toDataURL(url) {
+    return new Promise((resolve) => {
+      if (!url) return resolve('');
+      if (url.startsWith('data:')) return resolve(url);
+      
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = function() {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = this.naturalWidth || this.width;
+          canvas.height = this.naturalHeight || this.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(this, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch (e) {
+          console.warn('Canvas toDataURL failed for URL:', url, e);
+          resolve(url); // fallback to original url if canvas tainted
+        }
+      };
+      img.onerror = function() {
+        console.warn('Image load failed for URL:', url);
+        resolve(url); // fallback
+      };
+      img.src = url;
+    });
+  }
+
   // --- 14. PDF Document Compiler & Exporter ---
-  function exportAuditReportToPDF() {
+  async function exportAuditReportToPDF() {
+    let btnText = '';
+    if (el.btnExportPdf) {
+      btnText = el.btnExportPdf.innerHTML;
+      el.btnExportPdf.disabled = true;
+      el.btnExportPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Converting Images...';
+    }
     try {
       if (typeof html2pdf === 'undefined') {
         alert('PDF generation engine (html2pdf) is not loaded. Please ensure you are connected to the internet and refresh the page.');
@@ -2637,10 +2671,28 @@ function populateProjectSchoolYearSelect() {
         `;
       });
 
+      // Load and convert event attestation photo to base64
+      let eventPhotoBase64 = '';
+      if (event.photoUrl) {
+        eventPhotoBase64 = await toDataURL(event.photoUrl);
+      }
+
+      // Convert all receipt images to base64
       const receiptsList = appState.receipts[eventId] || [];
-      let receiptsHtml = '';
-      receiptsList.forEach((rec, rIdx) => {
+      const convertedReceipts = [];
+      for (const rec of receiptsList) {
         if (rec.receiptUrl) {
+          const b64 = await toDataURL(rec.receiptUrl);
+          convertedReceipts.push({
+            ...rec,
+            receiptUrlB64: b64
+          });
+        }
+      }
+
+      let receiptsHtml = '';
+      convertedReceipts.forEach((rec, rIdx) => {
+        if (rec.receiptUrlB64) {
           receiptsHtml += `
             <div style="break-inside: avoid; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 20px; background-color: #f8fafc;">
               <div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
@@ -2648,7 +2700,7 @@ function populateProjectSchoolYearSelect() {
               </div>
               <div style="font-size: 11px; color: #64748b; margin-bottom: 12px;">Date: ${formatDateString(rec.date)}</div>
               <div style="text-align: center; background-color: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                <img src="${rec.receiptUrl}" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 4px; display: inline-block;" />
+                <img src="${rec.receiptUrlB64}" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 4px; display: inline-block;" />
               </div>
             </div>
           `;
@@ -2656,14 +2708,14 @@ function populateProjectSchoolYearSelect() {
       });
 
       let eventPhotoHtml = '';
-      if (event.photoUrl) {
+      if (eventPhotoBase64) {
         eventPhotoHtml = `
           <div style="break-inside: avoid; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 20px; background-color: #f8fafc;">
             <div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
               EVENT DOCUMENT PHOTO &mdash; ATTESTATION
             </div>
             <div style="text-align: center; background-color: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-              <img src="${event.photoUrl}" style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 4px; display: inline-block;" />
+              <img src="${eventPhotoBase64}" style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 4px; display: inline-block;" />
             </div>
           </div>
         `;
@@ -2747,7 +2799,7 @@ function populateProjectSchoolYearSelect() {
               <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Verification Status: SIGNED Ledger</div>
             </div>
           </div>
-
+          
           <!-- Attachments & Proofs -->
           ${(eventPhotoHtml || receiptsHtml) ? `
             <div style="page-break-before: always; padding-top: 20px;">
@@ -2767,15 +2819,15 @@ function populateProjectSchoolYearSelect() {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       
-      html2pdf().set(opt).from(htmlContent).save().then(() => {
-        // Done
-      }).catch(err => {
-        console.error('PDF export failed', err);
-        alert('Document generation failed. Please try again.');
-      });
+      await html2pdf().set(opt).from(htmlContent).save();
     } catch (error) {
       console.error('Unexpected error during PDF generation:', error);
       alert('Failed to generate PDF: ' + error.message);
+    } finally {
+      if (el.btnExportPdf) {
+        el.btnExportPdf.disabled = false;
+        el.btnExportPdf.innerHTML = btnText;
+      }
     }
   }
 
