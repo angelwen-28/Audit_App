@@ -2622,9 +2622,11 @@ function populateProjectSchoolYearSelect() {
       const expensesList = appState.expenses[eventId] || [];
       
       const printContainer = document.createElement('div');
-      printContainer.style.position = 'fixed';
-      printContainer.style.top = '-9999px';
-      printContainer.style.left = '-9999px';
+      printContainer.style.position = 'absolute';
+      printContainer.style.left = '0';
+      printContainer.style.top = '0';
+      printContainer.style.zIndex = '-9999';
+      printContainer.style.opacity = '0.01';
       printContainer.style.width = '800px';
       printContainer.style.padding = '40px';
       printContainer.style.backgroundColor = '#ffffff';
