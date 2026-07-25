@@ -2601,14 +2601,16 @@ function populateProjectSchoolYearSelect() {
           resolve(canvas.toDataURL('image/png'));
         } catch (e) {
           console.warn('Canvas toDataURL failed for URL:', url, e);
-          resolve(url); // fallback to original url if canvas tainted
+          resolve(''); // empty string tells generator to omit this image
         }
       };
       img.onerror = function() {
         console.warn('Image load failed for URL:', url);
-        resolve(url); // fallback
+        resolve(''); // empty string tells generator to omit this image
       };
-      img.src = url;
+      // Append cache-busting query parameter to bypass browser CORS cache issues
+      const cacheBuster = url + (url.indexOf('?') > -1 ? '&' : '?') + 't_cors=' + Date.now();
+      img.src = cacheBuster;
     });
   }
 
