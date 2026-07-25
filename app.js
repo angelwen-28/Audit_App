@@ -2812,14 +2812,17 @@ function populateProjectSchoolYearSelect() {
       `;
       
       const printContainer = document.createElement('div');
-      printContainer.style.position = 'absolute';
-      printContainer.style.left = '-9999px';
+      printContainer.style.position = 'fixed';
+      printContainer.style.left = '0';
       printContainer.style.top = '0';
       printContainer.style.width = '800px';
+      printContainer.style.height = '100%';
       printContainer.style.backgroundColor = '#ffffff';
       printContainer.style.color = '#000000';
       printContainer.style.opacity = '1';
-      printContainer.style.zIndex = '-9999';
+      printContainer.style.zIndex = '-99999';
+      printContainer.style.pointerEvents = 'none';
+      printContainer.style.overflow = 'hidden';
       printContainer.innerHTML = htmlContent;
       document.body.appendChild(printContainer);
 
