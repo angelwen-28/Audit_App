@@ -2934,6 +2934,16 @@ function populateProjectSchoolYearSelect() {
     });
   }
 
+  const btnSanctionsBack = document.getElementById('btn-sanctions-back-to-projects');
+  if (btnSanctionsBack) {
+    btnSanctionsBack.addEventListener('click', () => {
+      const dbGrid = document.querySelector('.dashboard-grid');
+      if (dbGrid) {
+        dbGrid.classList.remove('show-detail');
+      }
+    });
+  }
+
   // Hook up sync ledger button handler
   const btnSyncLedger = document.getElementById('btn-sync-ledger');
   if (btnSyncLedger) {
@@ -3261,6 +3271,11 @@ function populateProjectSchoolYearSelect() {
 
   // ---- Select / show the sanctions view ----
   function selectSanctionsView() {
+    const dbGrid = document.querySelector('.dashboard-grid');
+    if (dbGrid) {
+      dbGrid.classList.add('show-detail');
+    }
+
     if (el.detailContent)    el.detailContent.classList.add('hide');
     if (el.detailEmptyState) el.detailEmptyState.classList.add('hide');
     const ov = document.getElementById('overall-dashboard-view');

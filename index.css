@@ -2017,6 +2017,41 @@ input:focus, select:focus, textarea:focus {
     grid-template-columns: 1fr;
     gap: 16px;
   }
+
+  /* Sanctions view responsiveness on mobile */
+  #btn-sanctions-back-to-projects {
+    display: flex !important;
+  }
+
+  .sanctions-view-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px;
+  }
+
+  .sanctions-filter-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .sanctions-filter-group select {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .sanctions-summary-row {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .sanctions-table-scroll {
+    overflow-x: auto !important;
+    max-height: calc(100vh - 280px);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+  }
   
   .form-row-2,
   .form-row-3 {
