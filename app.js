@@ -2811,6 +2811,18 @@ function populateProjectSchoolYearSelect() {
         </div>
       `;
       
+      const printContainer = document.createElement('div');
+      printContainer.style.position = 'absolute';
+      printContainer.style.left = '-9999px';
+      printContainer.style.top = '0';
+      printContainer.style.width = '800px';
+      printContainer.style.backgroundColor = '#ffffff';
+      printContainer.style.color = '#000000';
+      printContainer.style.opacity = '1';
+      printContainer.style.zIndex = '-9999';
+      printContainer.innerHTML = htmlContent;
+      document.body.appendChild(printContainer);
+
       const opt = {
         margin: 15,
         filename: `Audit_Report_${event.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
@@ -2819,7 +2831,11 @@ function populateProjectSchoolYearSelect() {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       
-      await html2pdf().set(opt).from(htmlContent).save();
+      // Delay 500ms to allow rendering engine to paint the decoded images in the DOM
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await html2pdf().set(opt).from(printContainer).save();
+      printContainer.remove();
     } catch (error) {
       console.error('Unexpected error during PDF generation:', error);
       alert('Failed to generate PDF: ' + error.message);
