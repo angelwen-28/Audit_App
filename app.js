@@ -918,6 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function logout() {
+    console.log("[Session] logout() was called! Active session is being cleared.");
     appState.currentUser = null;
     appState.activeEventId = null;
     localStorage.removeItem('aegis_session');

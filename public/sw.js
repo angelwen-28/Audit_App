@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aegis-auditor-cache-v4';
+const CACHE_NAME = 'aegis-auditor-cache-v5';
 const ASSETS = [
   '/',
   '/index.html',
@@ -40,22 +40,31 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch Event
+// Fetch Event - Network-First Strategy
 self.addEventListener('fetch', (e) => {
-  // Only handle GET requests and skip Supabase API calls or chrome-extensions to prevent errors
-  if (e.request.method !== 'GET' || e.request.url.includes('supabase.co')) {
+  // Only handle GET requests and skip Supabase/Extensions to prevent fetch errors
+  if (e.request.method !== 'GET' || e.request.url.includes('supabase.co') || e.request.url.includes('chrome-extension')) {
     return;
   }
   
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(e.request).catch(() => {
-        // Fallback for offline mode if resources are missing
-        console.log('[Service Worker] Resource not found in cache and offline fetch failed');
-      });
-    })
+    fetch(e.request)
+      .then((networkResponse) => {
+        // Cache the newly retrieved response for offline access
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const cacheCopy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, cacheCopy);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // Fallback to cache if network fails (offline)
+        return caches.match(e.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          console.warn('[Service Worker] Resource offline and not in cache:', e.request.url);
+        });
+      })
   );
 });
