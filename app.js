@@ -944,6 +944,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("[Session] Parsed session object:", u);
         login(u.email, u.role, u.name);
         console.log("[Session] login function completed for:", u.email);
+        if (el.authView && el.dashboardView) {
+          console.log("[Session] auth-view classes:", el.authView.className);
+          console.log("[Session] auth-view display:", window.getComputedStyle(el.authView).display);
+          console.log("[Session] dashboard-view classes:", el.dashboardView.className);
+          console.log("[Session] dashboard-view display:", window.getComputedStyle(el.dashboardView).display);
+        }
       } catch (e) {
         console.error("[Session] Error parsing/restoring session:", e);
         logout();
