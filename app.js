@@ -494,6 +494,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
       sortEventsChronologically();
       computeAllBalances();
+
+      // 5. Fetch & Sync Compliance Ledgers from Supabase to LocalStorage (Multi-Device Sync)
+      try {
+        const { data: ledgerData, error: ledgerError } = await supabase
+          .from('compliance_ledger')
+          .select('*');
+        
+        if (!ledgerError && ledgerData) {
+          ledgerData.forEach(row => {
+            if (row.key && row.data) {
+              localStorage.setItem(row.key, JSON.stringify(row.data));
+            }
+          });
+          console.log('Successfully synchronized compliance ledgers from Supabase.');
+        }
+      } catch (syncErr) {
+        console.warn('Failed to sync compliance ledgers from Supabase (compliance_ledger table might not exist yet):', syncErr);
+      }
     } catch (e) {
       console.error('Error initializing Supabase database:', e);
       // Fallback local structures if DB query fails completely on connection error
@@ -3328,7 +3346,28 @@ function populateProjectSchoolYearSelect() {
   }
 
   function saveLedger(sy, sem, ledger) {
-    localStorage.setItem(SANCTIONS_KEY(sy, sem), JSON.stringify(ledger));
+    const key = SANCTIONS_KEY(sy, sem);
+    localStorage.setItem(key, JSON.stringify(ledger));
+    
+    // Sync to Supabase compliance_ledger table if it is configured
+    if (supabase) {
+      supabase.from('compliance_ledger')
+        .upsert({
+          key: key,
+          data: ledger,
+          updated_at: new Date().toISOString()
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.warn('Supabase compliance sync failed (compliance_ledger table might not exist):', error);
+          } else {
+            console.log('Successfully synced compliance ledger to Supabase:', key);
+          }
+        })
+        .catch(err => {
+          console.warn('Error during Supabase compliance sync:', err);
+        });
+    }
   }
 
   // ---- Current SY/Sem from dropdowns ----

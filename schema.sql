@@ -56,3 +56,12 @@ ALTER TABLE events
   ADD COLUMN semester INTEGER CHECK (semester IN (1,2)) DEFAULT 1,
   ADD COLUMN school_year TEXT;
 
+-- Create compliance_ledger table to sync local storage data to Supabase database
+CREATE TABLE IF NOT EXISTS compliance_ledger (
+    key TEXT PRIMARY KEY,
+    data JSONB NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
+ALTER TABLE compliance_ledger DISABLE ROW LEVEL SECURITY;
+
