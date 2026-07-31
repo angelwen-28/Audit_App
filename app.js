@@ -903,7 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderEventList();
     }
     
-    sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
+    localStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
   }
 
   function checkSetupStatus() {
@@ -920,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function logout() {
     appState.currentUser = null;
     appState.activeEventId = null;
-    sessionStorage.removeItem('aegis_session');
+    localStorage.removeItem('aegis_session');
     
     el.dashboardView.classList.remove('active-view');
     if (checkSetupStatus()) {
@@ -931,7 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function checkExistingSession() {
     if (!checkSetupStatus()) return;
-    const cachedSession = sessionStorage.getItem('aegis_session');
+    const cachedSession = localStorage.getItem('aegis_session');
     if (cachedSession) {
       try {
         const u = JSON.parse(cachedSession);
@@ -2309,7 +2309,7 @@ function populateProjectSchoolYearSelect() {
       console.log('Updating accounts in Supabase', appAccounts);
       setDBValue('accounts', appAccounts)
         .then(() => {
-          sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
+          localStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
           el.userDisplayName.textContent = appState.currentUser.name;
           el.profileNameLabel.textContent = appState.currentUser.name;
           el.profileEmailLabel.textContent = appState.currentUser.email;
@@ -3046,7 +3046,7 @@ function populateProjectSchoolYearSelect() {
       console.log('Updating accounts in Supabase', appAccounts);
       setDBValue('accounts', appAccounts)
         .then(() => {
-          sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
+          localStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
           // Update all UI displays
           el.userDisplayName.textContent = appState.currentUser.name;
           el.profileNameLabel.textContent = appState.currentUser.name;
@@ -3067,7 +3067,7 @@ function populateProjectSchoolYearSelect() {
           alert('Failed to save profile changes. Please try again.');
         });
     } else {
-      sessionStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
+      localStorage.setItem('aegis_session', JSON.stringify(appState.currentUser));
 
       // Update all visible name displays
       el.userDisplayName.textContent = newName;
@@ -3400,6 +3400,11 @@ function populateProjectSchoolYearSelect() {
         }
       }
     }
+    // Also add unique school years from Supabase events list
+    appState.events.forEach(e => {
+      if (e.schoolYear) sySet.add(e.schoolYear.trim());
+    });
+
     // Also add the manual input value if present
     const manualSY = ((document.getElementById('sanctions-sy-manual') || {}).value || '').trim();
     if (manualSY) sySet.add(manualSY);
@@ -3525,7 +3530,35 @@ function populateProjectSchoolYearSelect() {
     if (summaryRow)   summaryRow.style.display = '';
 
     const ledger   = loadLedger(sy, sem);
-    const events   = ledger.events   || [];
+    
+    // Fetch all database events matching active SY and Semester
+    const dbEventsMatching = appState.events.filter(e => {
+      const matchesSy = e.schoolYear && e.schoolYear.trim() === sy.trim();
+      const matchesSem = e.semester && String(e.semester).trim() === String(sem).trim();
+      return matchesSy && matchesSem;
+    });
+
+    // Sync ledger.events with matching database events
+    const syncedEvents = dbEventsMatching.map(dbEv => {
+      const existing = (ledger.events || []).find(le => le.name.toUpperCase().trim() === dbEv.name.toUpperCase().trim() || le.id === dbEv.id);
+      return {
+        id: existing ? existing.id : dbEv.id,
+        name: dbEv.name.toUpperCase().trim()
+      };
+    });
+
+    // Also preserve manual compliance-only events created via prompt button that are not in the DB
+    (ledger.events || []).forEach(le => {
+      const inDB = dbEventsMatching.some(dbEv => dbEv.name.toUpperCase().trim() === le.name.toUpperCase().trim() || dbEv.id === le.id);
+      if (!inDB) {
+        syncedEvents.push(le);
+      }
+    });
+
+    ledger.events = syncedEvents;
+    saveLedger(sy, sem, ledger);
+    
+    const events   = ledger.events;
     const allStudents = ledger.students || [];
 
     // Populate sections dropdown dynamically from loaded students
