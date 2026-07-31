@@ -930,15 +930,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function checkExistingSession() {
-    if (!checkSetupStatus()) return;
+    console.log("[Session] Checking existing session...");
+    if (!checkSetupStatus()) {
+      console.log("[Session] checkSetupStatus returned false (accounts setup not completed), skipping restore.");
+      return;
+    }
     const cachedSession = localStorage.getItem('aegis_session');
+    console.log("[Session] Found cached session string:", cachedSession);
     if (cachedSession) {
       try {
         const u = JSON.parse(cachedSession);
+        console.log("[Session] Parsed session object:", u);
         login(u.email, u.role, u.name);
+        console.log("[Session] login function completed for:", u.email);
       } catch (e) {
+        console.error("[Session] Error parsing/restoring session:", e);
         logout();
       }
+    } else {
+      console.log("[Session] No aegis_session found in localStorage.");
     }
   }
 
