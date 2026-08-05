@@ -2128,6 +2128,17 @@ input:focus, select:focus, textarea:focus {
   .finance-label {
     font-size: 0.8rem !important;
   }
+  .overall-balance-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .overall-dashboard {
+    padding: 16px !important;
+  }
+  .overall-balance-card {
+    padding: 24px 16px !important;
+    max-width: 100% !important;
+  }
 }
 
 
