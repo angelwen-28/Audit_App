@@ -2052,6 +2052,37 @@ input:focus, select:focus, textarea:focus {
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-sm);
   }
+
+  .sanctions-pivot-table thead th.col-name,
+  .sanctions-pivot-table tbody td.cell-name,
+  .sanctions-pivot-table tfoot td.foot-name {
+    min-width: 130px !important;
+    width: 130px !important;
+  }
+  
+  .sanctions-pivot-table thead th.col-event {
+    min-width: 75px !important;
+  }
+
+  .sanctions-pivot-table thead th,
+  .sanctions-pivot-table tbody td,
+  .sanctions-pivot-table tfoot td {
+    padding: 6px 8px !important;
+    font-size: 0.72rem !important;
+  }
+  
+  .sanctions-name-input {
+    font-size: 0.75rem !important;
+  }
+  
+  .sanctions-att-select {
+    font-size: 0.75rem !important;
+    padding: 4px 2px !important;
+  }
+  
+  .att-amount {
+    font-size: 0.85rem !important;
+  }
   
   .form-row-2,
   .form-row-3 {
@@ -2068,7 +2099,12 @@ input:focus, select:focus, textarea:focus {
   .auth-card {
     padding: 32px 24px;
   }
+  .compliance-summary-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
 }
+
 
 @media (max-width: 640px) {
   /* Text adjustments to prevent wrapping/overflows of large numbers */
@@ -2150,6 +2186,35 @@ input:focus, select:focus, textarea:focus {
   .modal-footer { flex-direction: column; gap: 8px; }
   .modal-footer .btn { width: 100%; }
   .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
+
+  .overall-balance-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .overall-dashboard {
+    padding: 16px;
+  }
+  .overall-balance-card {
+    padding: 24px 16px;
+  }
+  .sanctions-filter-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100%;
+  }
+  .sanctions-filter-group {
+    width: 100% !important;
+  }
+  .sanctions-filter-group select,
+  .sanctions-filter-group input {
+    width: 100% !important;
+  }
+  .sanctions-filter-row button,
+  .sanctions-filter-row .btn {
+    width: 100% !important;
+    justify-content: center;
+  }
 }
 
 /* Print Stylesheet overrides for PDF generation */
@@ -2158,6 +2223,9 @@ input:focus, select:focus, textarea:focus {
   .dashboard-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+  .compliance-summary-grid {
+    grid-template-columns: 1fr;
   }
   .auth-card {
     padding: 24px 16px;
@@ -2247,6 +2315,22 @@ input:focus, select:focus, textarea:focus {
     color: black !important;
     border-bottom: 1px solid #cbd5e1 !important;
   }
+}
+
+/* --- 10b. Custom Responsive Grids --- */
+.overall-balance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.compliance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
 /* --- 11. Overall Funds UI Styling --- */
