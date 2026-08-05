@@ -331,9 +331,15 @@ input:focus, select:focus, textarea:focus {
   width: 100vw;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 40px 20px;
   z-index: 10;
   position: relative;
+  overflow-y: auto;
+}
+
+.setup-card {
+  max-width: 520px;
+  padding: 36px 30px;
 }
 
 .auth-view.active-view {
@@ -2232,6 +2238,9 @@ input:focus, select:focus, textarea:focus {
   .sanctions-filter-row .btn {
     width: 100% !important;
     justify-content: center;
+  }
+  .setup-card {
+    padding: 24px 16px;
   }
 }
 
