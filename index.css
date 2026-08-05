@@ -1942,11 +1942,12 @@ input:focus, select:focus, textarea:focus {
 
 @media (max-width: 768px) {
   body {
-    padding: 10px;
+    padding: 0 !important;
   }
   
   .dashboard-view {
-    padding: 10px 0;
+    padding: 0 !important;
+    gap: 0 !important;
   }
   
   /* Compact Row Header on Mobile */
@@ -1955,6 +1956,10 @@ input:focus, select:focus, textarea:focus {
     align-items: center !important;
     justify-content: space-between !important;
     padding: 12px 16px !important;
+    border-radius: 0 !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
   }
   
   .view-pill {
@@ -1976,6 +1981,7 @@ input:focus, select:focus, textarea:focus {
     position: relative;
     overflow-x: hidden;   /* prevent horizontal scroll */
     overflow-y: visible;  /* allow content to flow and scroll naturally */
+    padding: 16px !important;
   }
   
   .sidebar-panel {
