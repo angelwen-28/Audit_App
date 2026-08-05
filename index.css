@@ -2134,6 +2134,12 @@ input:focus, select:focus, textarea:focus {
   }
   .overall-dashboard {
     padding: 16px !important;
+    align-items: stretch !important;
+  }
+  .overall-dashboard .glass-panel {
+    padding: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   .overall-balance-card {
     padding: 24px 16px !important;
