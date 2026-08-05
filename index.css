@@ -2107,13 +2107,27 @@ input:focus, select:focus, textarea:focus {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
+  .project-title-group h1 {
+    font-size: 1.3rem !important;
+  }
+  .sanctions-stat-val {
+    font-size: 1.05rem !important;
+  }
+  .finance-value {
+    font-size: 0.9rem !important;
+  }
+  .total-value {
+    font-size: 1.15rem !important;
+  }
+  .finance-label {
+    font-size: 0.8rem !important;
+  }
 }
 
 
 @media (max-width: 640px) {
-  /* Text adjustments to prevent wrapping/overflows of large numbers */
   .overall-balance-card h2 {
-    font-size: 2rem !important;
+    font-size: 1.8rem !important;
   }
   
   /* Transform the desktop layout table into mobile-friendly stacked cards */
@@ -2278,7 +2292,11 @@ input:focus, select:focus, textarea:focus {
     padding: 8px 10px;
   }
   .overall-balance-card h2 {
-    font-size: 2.5rem;
+    font-size: 1.5rem !important;
+  }
+  .receipt-card-total-badge {
+    font-size: 0.85rem !important;
+    padding: 6px 12px !important;
   }
 }
 
